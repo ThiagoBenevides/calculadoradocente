@@ -1,0 +1,34 @@
+/* css/style.css */
+
+/* Remove as setas de incremento padrão em navegadores WebKit e Firefox */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* Transições suaves globais para cards interativos */
+.card-transicao {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Realce visual para inputs selecionados */
+input:focus, select:focus {
+  outline: none;
+}
+
+/* Estilo para áreas de anúncios reservados (evita Cumulative Layout Shift - CLS) */
+.ad-slot-reserved {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 250px;
+  background-color: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 0.75rem;
+}
