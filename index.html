@@ -4,60 +4,214 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Calculadora do Professor | Salário Líquido, Aulas Extras e Deslocamento</title>
-  <meta name="description" content="Simulador financeiro completo para professores da rede pública (PSS/QPM) e privada (CLT). Calcule remuneração líquida, deduções de INSS, RPPS, IRPF marginal e viabilidade de aulas em múltiplos colégios.">
-  <link rel="canonical" href="https://calculadoradoprofessor.com.br/">
+  <meta name="description" content="Simulador de salário líquido real para professores PSS, concursados e CLT. Calcule impacto do IRPF e viabilidade de aulas extras.">
+  <link rel="canonical" href="https://thiagobenevides.github.io/calculadoradocente/">
 
   <!-- Tailwind CSS via CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Estilos customizados -->
   <link rel="stylesheet" href="css/style.css">
-
-  <!-- Espaço reservado para Script do Google AdSense (descomente e insira seu ID após aprovação) -->
-  <!-- <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script> -->
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col justify-between">
+<body class="bg-slate-100 text-slate-800 font-sans antialiased min-h-screen flex flex-col justify-between">
 
-  <!-- Cabeçalho -->
-  <header class="bg-slate-900 text-white border-b border-slate-800 shadow-sm">
+  <!-- Header -->
+  <header class="bg-slate-900 text-white border-b border-slate-800 shadow-md">
     <div class="max-w-6xl mx-auto px-4 py-5 flex flex-col sm:flex-row justify-between items-center gap-4">
-      <div>
-        <a href="index.html" class="text-2xl font-black tracking-tight text-white hover:text-slate-200 transition">Calculadora do Professor</a>
-        <p class="text-xs sm:text-sm text-slate-400">Simulador de remuneração horista, deduções e logística de turmas</p>
+      <div class="text-center sm:text-left">
+        <h1 class="text-2xl font-black tracking-tight text-white flex items-center justify-center sm:justify-start gap-2">
+          <span>Calculadora do Professor</span>
+        </h1>
+        <p class="text-xs sm:text-sm text-slate-400 mt-0.5">Planejamento de carga horária, deduções de IRPF e viabilidade de deslocamento</p>
       </div>
-      <div class="flex items-center gap-3">
-        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-950 text-emerald-400 border border-emerald-800">
-          ● Tabela Atualizada 2026
-        </span>
-      </div>
+      <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-950/80 text-emerald-400 border border-emerald-800/80">
+        ● Tabela Oficial 2026
+      </span>
     </div>
   </header>
 
-  <!-- Conteúdo Principal -->
-  <main class="max-w-6xl mx-auto px-4 py-8 flex-grow grid grid-cols-1 lg:grid-cols-12 gap-8">
+  <!-- Container Principal -->
+  <main class="max-w-6xl mx-auto px-4 py-8 flex-grow w-full grid grid-cols-1 lg:grid-cols-12 gap-8">
     
-    <!-- Formulário Interativo de Parâmetros (7 Colunas) -->
+    <!-- Coluna de Configuração (Formulário) -->
     <section class="lg:col-span-7 space-y-6">
-      <form id="form-calculadora" class="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200 space-y-6" onsubmit="event.preventDefault();">
+      <form id="form-calculadora" class="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200/80 space-y-6" onsubmit="event.preventDefault();">
         
-        <!-- Seleção de Vínculo Contratual -->
+        <!-- 1. Vínculo -->
         <div>
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">1. Vínculo / Regime Jurídico</label>
-          <div class="grid grid-cols-3 gap-2 sm:gap-3">
-            <label class="flex items-center justify-center p-3 border rounded-xl cursor-pointer hover:bg-slate-50 text-xs sm:text-sm font-semibold text-slate-700 has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50 has-[:checked]:text-indigo-900 transition card-transicao text-center">
-              <input type="radio" name="regime" value="pss" checked class="hidden"> PSS / Temporário
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">1. Regime de Trabalho</label>
+          <div class="grid grid-cols-3 gap-3">
+            <label class="flex flex-col items-center justify-center p-3.5 border-2 rounded-xl cursor-pointer hover:bg-slate-50 text-xs sm:text-sm font-bold text-slate-700 has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50/50 has-[:checked]:text-indigo-900 transition-all text-center">
+              <input type="radio" name="regime" value="pss" checked class="hidden">
+              <span>PSS / Temporário</span>
+              <span class="text-[10px] font-normal text-slate-400 mt-0.5">INSS + 1/3 Planej.</span>
             </label>
-            <label class="flex items-center justify-center p-3 border rounded-xl cursor-pointer hover:bg-slate-50 text-xs sm:text-sm font-semibold text-slate-700 has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50 has-[:checked]:text-indigo-900 transition card-transicao text-center">
-              <input type="radio" name="regime" value="qpm" class="hidden"> Efetivo / QPM
-            </label>
-            <label class="flex items-center justify-center p-3 border rounded-xl cursor-pointer hover:bg-slate-50 text-xs sm:text-sm font-semibold text-slate-700 has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50 has-[:checked]:text-indigo-900 transition card-transicao text-center">
-              <input type="radio" name="regime" value="clt" class="hidden">
 
-              <footer class="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-500 mt-12">
-                <div class="max-w-5xl mx-auto px-4 space-x-4">
-                  <a href="index.html" class="hover:underline font-semibold text-slate-700">Início</a>
-                  <a href="politica-privacidade.html" class="hover:underline">Política de Privacidade</a>
-                  <a href="termos-de-uso.html" class="hover:underline">Termos de Uso</a>
-                  <a href="sobre.html" class="hover:underline">Sobre e Contato</a>
-                </div>
-              </footer>
+            <label class="flex flex-col items-center justify-center p-3.5 border-2 rounded-xl cursor-pointer hover:bg-slate-50 text-xs sm:text-sm font-bold text-slate-700 has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50/50 has-[:checked]:text-indigo-900 transition-all text-center">
+              <input type="radio" name="regime" value="qpm" class="hidden">
+              <span>Efetivo / Concurso</span>
+              <span class="text-[10px] font-normal text-slate-400 mt-0.5">RPPS Próprio</span>
+            </label>
+
+            <label class="flex flex-col items-center justify-center p-3.5 border-2 rounded-xl cursor-pointer hover:bg-slate-50 text-xs sm:text-sm font-bold text-slate-700 has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50/50 has-[:checked]:text-indigo-900 transition-all text-center">
+              <input type="radio" name="regime" value="clt" class="hidden">
+              <span>Particular (CLT)</span>
+              <span class="text-[10px] font-normal text-slate-400 mt-0.5">DSR 1/6 + Conv.</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- 2. Colégio Principal -->
+        <div class="border-t border-slate-100 pt-6 space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-sm font-bold uppercase tracking-wider text-slate-900">2. Colégio Principal (Sede / Colégio A)</h2>
+            <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-medium">Base</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label for="input-aulas-a" class="block text-xs font-semibold text-slate-700 mb-1.5">Aulas Semanais em Sala</label>
+              <input type="number" id="input-aulas-a" value="20" min="1" max="40" class="w-full rounded-xl border-slate-300 border px-3.5 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none transition">
+              <span class="text-[11px] text-slate-400 mt-1 block">Horas em regência de classe</span>
+            </div>
+            <div>
+              <label for="input-valor-hora" class="block text-xs font-semibold text-slate-700 mb-1.5">Valor da Hora-Aula (R$)</label>
+              <input type="number" id="input-valor-hora" value="25.00" step="0.50" min="1" class="w-full rounded-xl border-slate-300 border px-3.5 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none transition">
+              <span class="text-[11px] text-slate-400 mt-1 block">Valor padrão do padrão/edital</span>
+            </div>
+          </div>
+
+          <div>
+            <label for="input-gratificacoes" class="block text-xs font-semibold text-slate-700 mb-1.5">Gratificações Mensais Fixas (R$)</label>
+            <input type="number" id="input-gratificacoes" value="0" step="50" min="0" class="w-full rounded-xl border-slate-300 border px-3.5 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none transition">
+            <span class="text-[11px] text-slate-400 mt-1 block">GTE, coordenação, regência especial ou auxílios</span>
+          </div>
+        </div>
+
+        <!-- 3. Segundo Colégio -->
+        <div class="border-t border-slate-100 pt-6 space-y-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-sm font-bold uppercase tracking-wider text-slate-900">3. Pegar Aulas em Outro Colégio? (Colégio B)</h2>
+              <p class="text-xs text-slate-500">Avalia se o deslocamento em km e o salto de IR compensam</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="check-colegio-b" class="sr-only peer">
+              <div class="w-12 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+            </label>
+          </div>
+
+          <div id="container-campos-b" class="space-y-4 opacity-40 pointer-events-none transition-all duration-200 bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label for="input-aulas-b" class="block text-xs font-semibold text-slate-700 mb-1">Aulas Extras no Colégio B</label>
+                <input type="number" id="input-aulas-b" value="6" min="1" max="20" class="w-full rounded-lg border-slate-300 border px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 transition">
+              </div>
+              <div>
+                <label for="input-dias-b" class="block text-xs font-semibold text-slate-700 mb-1">Dias de Deslocamento / Semana</label>
+                <input type="number" id="input-dias-b" value="2" min="1" max="5" class="w-full rounded-lg border-slate-300 border px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 transition">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-3">
+              <div>
+                <label for="input-km-b" class="block text-xs font-semibold text-slate-700 mb-1">Km Ida/Volta</label>
+                <input type="number" id="input-km-b" value="25" min="0" class="w-full rounded-lg border-slate-300 border px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 transition">
+              </div>
+              <div>
+                <label for="input-consumo-b" class="block text-xs font-semibold text-slate-700 mb-1">Km/Litro</label>
+                <input type="number" id="input-consumo-b" value="10" step="0.5" min="1" class="w-full rounded-lg border-slate-300 border px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 transition">
+              </div>
+              <div>
+                <label for="input-gasolina-b" class="block text-xs font-semibold text-slate-700 mb-1">Gasolina (R$)</label>
+                <input type="number" id="input-gasolina-b" value="5.90" step="0.10" min="1" class="w-full rounded-lg border-slate-300 border px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 transition">
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </form>
+    </section>
+
+    <!-- Coluna de Resultados / Dashboard (5 Colunas) -->
+    <aside class="lg:col-span-5 space-y-6">
+      
+      <!-- Card Demonstrativo -->
+      <div class="bg-white p-6 sm:p-7 rounded-2xl shadow-sm border border-slate-200 space-y-5">
+        <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Resultado Estimado</span>
+          <span class="text-[11px] font-semibold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100">Mensal</span>
+        </div>
+
+        <div>
+          <span class="block text-xs font-semibold text-slate-500 uppercase tracking-wide">Salário Líquido no Bolso</span>
+          <div id="res-salario-liquido" class="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight mt-1">R$ 0,00</div>
+          <p class="text-[11px] text-slate-400 mt-1">Livre de Previdência e Imposto de Renda</p>
+        </div>
+
+        <div class="pt-4 border-t border-slate-100 text-xs space-y-2.5 text-slate-600">
+          <div class="flex justify-between items-center">
+            <span>Remuneração Bruta:</span>
+            <span id="res-salario-bruto" class="font-bold text-slate-800 text-sm">R$ 0,00</span>
+          </div>
+          <div class="flex justify-between items-center text-rose-600">
+            <span>Total de Deduções:</span>
+            <span id="res-total-descontos" class="font-semibold text-sm">- R$ 0,00</span>
+          </div>
+        </div>
+
+        <!-- Alerta de Viabilidade Colégio B -->
+        <div id="res-alerta-colegio-b" class="hidden text-xs rounded-xl p-4 transition-all duration-200"></div>
+      </div>
+
+      <!-- Slot AdSense Lateral -->
+      <div class="ad-slot-reserved p-6 text-center text-xs text-slate-400">
+        <span class="font-semibold text-slate-500">[ Anúncio ]</span>
+        <span class="text-[11px] text-slate-400 mt-1">Espaço reservado para o Google AdSense</span>
+      </div>
+
+    </aside>
+
+  </main>
+
+  <!-- Artigo Didático para SEO e AdSense -->
+  <article class="max-w-6xl mx-auto px-4 py-8 text-slate-600 text-sm leading-relaxed space-y-4">
+    <div class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 space-y-3">
+      <h2 class="text-lg font-bold text-slate-900">Como funciona o cálculo do professor horista?</h2>
+      <p>
+        O cálculo da remuneração de professores horistas no Brasil varia conforme o regime de contratação. Na rede privada (CLT), incide o Descanso Semanal Remunerado (1/6) e o adicional de hora-atividade. No setor público (PSS e concursados), a Lei 11.738/2008 garante a reserva de 1/3 da jornada para planejamento.
+      </p>
+      <p>
+        Ao assumir aulas em um segundo colégio, o aumento salarial pode elevar a base para uma alíquota maior de IRPF. O simulador considera esse imposto marginal somado aos gastos com combustível para indicar se o deslocamento é viável.
+      </p>
+    </div>
+  </article>
+
+  <!-- Rodapé Separado e Limpo -->
+  <footer class="bg-white border-t border-slate-200 py-8 text-center text-xs text-slate-500 w-full mt-6">
+    <div class="max-w-6xl mx-auto px-4 space-y-3">
+      <div class="flex flex-wrap justify-center gap-6 text-slate-600 font-medium">
+        <a href="index.html" class="hover:text-indigo-600 transition">Início</a>
+        <a href="politica-privacidade.html" class="hover:text-indigo-600 transition">Política de Privacidade</a>
+        <a href="termos-de-uso.html" class="hover:text-indigo-600 transition">Termos de Uso</a>
+        <a href="sobre.html" class="hover:text-indigo-600 transition">Sobre e Contato</a>
+      </div>
+      <p>© 2026 Calculadora do Professor. Todos os direitos reservados.</p>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script type="module" src="js/app.js"></script>
+  <script>
+    const toggleB = document.getElementById('check-colegio-b');
+    const containerB = document.getElementById('container-campos-b');
+    if (toggleB && containerB) {
+      toggleB.addEventListener('change', () => {
+        if (toggleB.checked) {
+          containerB.classList.remove('opacity-40', 'pointer-events-none');
+        } else {
+          containerB.classList.add('opacity-40', 'pointer-events-none');
+        }
+      });
+    }
+  </script>
+</body>
+</html>
