@@ -3,212 +3,504 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Calculadora do Professor | Simulador de Múltiplos Colégios e Deslocamento</title>
-  <meta name="description" content="Simulador de salário líquido para professores com múltiplas escolas. Otimização de carga horária, impacto de IRPF e diagnóstico de qual escola compensa manter ou abandonar.">
+  <title>Calculadora do Professor | Salário líquido com várias escolas</title>
+  <meta name="description" content="Descubra seu salário líquido real como professor com várias escolas: INSS, IRRF 2026, deslocamento e qual escola compensa menos.">
+  <meta name="theme-color" content="#0f172a">
   <link rel="canonical" href="https://thiagobenevides.github.io/calculadoradocente/">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧮</text></svg>">
 
-  <!-- Tailwind CSS via CDN -->
+  <!-- Compartilhamento (WhatsApp, Facebook, LinkedIn) -->
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="pt_BR">
+  <meta property="og:title" content="Calculadora do Professor: quanto sobra no seu bolso?">
+  <meta property="og:description" content="Compare suas escolas e descubra qual compensa menos manter, com INSS, IRRF 2026 e custo de deslocamento.">
+  <meta property="og:url" content="https://thiagobenevides.github.io/calculadoradocente/">
+  <!-- TODO: criar esta imagem (1200x630) e publicar no mesmo caminho -->
+  <meta property="og:image" content="https://thiagobenevides.github.io/calculadoradocente/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <!-- TODO: trocar pelo CSS compilado do Tailwind antes de publicar (npx tailwindcss -o css/tailwind.css --minify) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="css/style.css">
-</head>
-<body class="bg-slate-100 text-slate-800 font-sans antialiased min-h-screen flex flex-col justify-between">
 
-  <!-- Header -->
-  <header class="bg-slate-900 text-white border-b border-slate-800 shadow-md">
-    <div class="max-w-6xl mx-auto px-4 py-5 flex flex-col sm:flex-row justify-between items-center gap-4">
-      <div class="text-center sm:text-left">
-        <h1 class="text-2xl font-black tracking-tight text-white">Calculadora do Professor</h1>
-        <p class="text-xs sm:text-sm text-slate-400 mt-0.5">Gestão de carga horária em múltiplas escolas, tributação e rota ótima</p>
+  <style>
+    /* Foco visível para quem navega por teclado */
+    a:focus-visible, button:focus-visible, summary:focus-visible,
+    input:focus-visible, select:focus-visible {
+      outline: 3px solid #4f46e5;
+      outline-offset: 2px;
+    }
+    /* 16px evita o zoom automático do iPhone ao tocar num campo; alvo de toque >= 44px */
+    @media (max-width: 640px) {
+      input[type="text"], select { font-size: 16px !important; min-height: 44px; }
+    }
+    /* Avisos não ficam atrás da barra fixa do celular */
+    @media (max-width: 1023px) { #toast-app { bottom: 5rem !important; } }
+    summary { cursor: pointer; }
+    summary::-webkit-details-marker { display: none; }
+    details[open] > summary .seta { transform: rotate(180deg); }
+  </style>
+
+  <!-- Dados estruturados (o texto do FAQ precisa ser igual ao exibido na página) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Calculadora do Professor",
+    "url": "https://thiagobenevides.github.io/calculadoradocente/",
+    "applicationCategory": "FinanceApplication",
+    "operatingSystem": "Web",
+    "inLanguage": "pt-BR",
+    "description": "Simulador de salário líquido para professores com várias escolas, com INSS, IRRF, deslocamento e ranking de qual escola compensa menos.",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "BRL" }
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Como a calculadora chega ao salário líquido real?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Somamos o bruto de cada escola (aulas mais hora-atividade), descontamos a previdência (INSS ou RPPS) e o IRPF e, por fim, subtraímos o gasto com combustível do deslocamento. É uma estimativa mensal, sem 13º, férias e FGTS." }
+      },
+      {
+        "@type": "Question",
+        "name": "Quanto desconta de INSS e de imposto de renda em 2026?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Em 2026, o INSS de empregados é progressivo, de 7,5% a 14%, até o teto de contribuição de R$ 8.475,55. Quem recebe até R$ 5 mil por mês tem o imposto de renda zerado, e entre R$ 5.000,01 e R$ 7.350 há redução gradual do imposto (Lei 15.270/2025). As fontes estão na seção Tabelas utilizadas." }
+      },
+      {
+        "@type": "Question",
+        "name": "O que é hora-atividade?",
+        "acceptedAnswer": { "@type": "Answer", "text": "É a parte da jornada paga para planejar aulas, corrigir provas e atender famílias, sem estar em sala. O percentual varia conforme a rede, o contrato ou a convenção coletiva; por isso a calculadora permite escolher ou digitar o seu." }
+      },
+      {
+        "@type": "Question",
+        "name": "Qual a diferença entre PSS, QPM e CLT?",
+        "acceptedAnswer": { "@type": "Answer", "text": "PSS é a contratação temporária na rede pública, com contribuição ao INSS. Efetivo/QPM é o servidor concursado, que contribui ao regime próprio de previdência (RPPS) do estado ou município. CLT é a carteira assinada na rede particular, com descanso semanal remunerado. As regras exatas variam por rede." }
+      },
+      {
+        "@type": "Question",
+        "name": "Como saber qual escola compensa menos?",
+        "acceptedAnswer": { "@type": "Answer", "text": "O ranking tira cada escola do cálculo e mostra quanto você perde no contracheque, quanto economiza de gasolina e quanto sobra por hora, contando aulas, hora-atividade e tempo de deslocamento." }
+      },
+      {
+        "@type": "Question",
+        "name": "Meus dados ficam salvos?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Os valores que você digita na calculadora ficam apenas no seu navegador e não são enviados a nenhum servidor." }
+      },
+      {
+        "@type": "Question",
+        "name": "Os resultados são oficiais?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Não. São estimativas para ajudar na sua decisão e não substituem o contracheque nem a orientação de um contador ou advogado." }
+      }
+    ]
+  }
+  </script>
+</head>
+
+<body class="bg-slate-100 text-slate-800 font-sans antialiased min-h-screen flex flex-col pb-20 lg:pb-0">
+
+  <a href="#conteudo" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:bg-white focus:text-indigo-700 focus:px-4 focus:py-2 focus:rounded-lg focus:font-bold">Ir para o conteúdo</a>
+
+  <!-- Cabeçalho -->
+  <header class="bg-slate-900 text-white">
+    <div class="max-w-6xl mx-auto px-4 py-5 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+      <div>
+        <h1 class="text-2xl font-extrabold tracking-tight">Calculadora do Professor</h1>
+        <p class="text-sm sm:text-base text-slate-300 mt-1">Veja quanto sobra no seu bolso e qual escola compensa menos manter.</p>
       </div>
-      <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-950/80 text-emerald-400 border border-emerald-800/80">
-        ● Tabela Oficial 2026
-      </span>
+      <a id="selo-tabelas" href="#tabelas-referencia" class="self-start sm:self-auto inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-950 text-emerald-300 border border-emerald-700 hover:bg-emerald-900 transition">
+        Tabelas de 2026 · ver fontes
+      </a>
     </div>
   </header>
 
-  <!-- Container Principal -->
-  <main class="max-w-6xl mx-auto px-4 py-8 flex-grow w-full grid grid-cols-1 lg:grid-cols-12 gap-8">
-    
-    <!-- Formulário Dinâmico de Escolas (7 Colunas) -->
-    <section class="lg:col-span-7 space-y-6">
-      
-      <!-- 1. Configurações Gerais e Hora-Atividade -->
-      <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80 space-y-5">
-        <div>
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">1. Regime de Trabalho Principal</label>
-          <div class="grid grid-cols-3 gap-3">
-            <label class="flex flex-col items-center justify-center p-3 border-2 rounded-xl cursor-pointer hover:bg-slate-50 text-xs sm:text-sm font-bold text-slate-700 has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50/50 has-[:checked]:text-indigo-900 transition-all text-center">
-              <input type="radio" name="regime" value="pss" checked class="hidden">
-              <span>PSS / Temporário</span>
-              <span class="text-[10px] font-normal text-slate-400 mt-0.5">INSS Geral</span>
-            </label>
+  <main id="conteudo" class="max-w-6xl mx-auto px-4 py-6 sm:py-8 w-full flex-grow">
 
-            <label class="flex flex-col items-center justify-center p-3 border-2 rounded-xl cursor-pointer hover:bg-slate-50 text-xs sm:text-sm font-bold text-slate-700 has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50/50 has-[:checked]:text-indigo-900 transition-all text-center">
-              <input type="radio" name="regime" value="qpm" class="hidden">
-              <span>Efetivo / QPM</span>
-              <span class="text-[10px] font-normal text-slate-400 mt-0.5">RPPS Próprio</span>
-            </label>
+    <noscript>
+      <p class="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-sm">Esta calculadora precisa de JavaScript. Ative-o no navegador para continuar.</p>
+    </noscript>
 
-            <label class="flex flex-col items-center justify-center p-3 border-2 rounded-xl cursor-pointer hover:bg-slate-50 text-xs sm:text-sm font-bold text-slate-700 has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50/50 has-[:checked]:text-indigo-900 transition-all text-center">
-              <input type="radio" name="regime" value="clt" class="hidden">
-              <span>Particular (CLT)</span>
-              <span class="text-[10px] font-normal text-slate-400 mt-0.5">DSR 1/6 + Conv.</span>
-            </label>
+    <!-- Aviso de tabela vencida (preenchido por js/ui-tabelas.js) -->
+    <div id="aviso-tabelas" role="status" hidden class="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-sm"></div>
+
+    <!-- Como usar -->
+    <ol class="flex flex-col sm:flex-row gap-2 sm:gap-4 mb-6 text-sm text-slate-700" aria-label="Como usar">
+      <li class="flex items-center gap-2"><span class="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs font-bold flex items-center justify-center" aria-hidden="true">1</span> Informe seu contrato</li>
+      <li class="flex items-center gap-2"><span class="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs font-bold flex items-center justify-center" aria-hidden="true">2</span> Adicione suas escolas</li>
+      <li class="flex items-center gap-2"><span class="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs font-bold flex items-center justify-center" aria-hidden="true">3</span> Veja o líquido real e o ranking</li>
+    </ol>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+
+      <!-- Coluna do formulário -->
+      <div class="lg:col-span-7 space-y-6">
+
+        <!-- Seu contrato -->
+        <section class="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6" aria-labelledby="titulo-contrato">
+          <h2 id="titulo-contrato" class="text-lg font-bold text-slate-900">Seu contrato</h2>
+
+          <fieldset>
+            <legend class="text-sm font-semibold text-slate-800 mb-1">Regime de trabalho principal</legend>
+            <p class="text-sm text-slate-600 mb-3">Cada escola pode ter um regime diferente: ajuste no cartão dela.</p>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <label class="relative block cursor-pointer">
+                <input type="radio" name="regime" value="pss" checked class="peer sr-only">
+                <span class="block h-full p-3 border-2 border-slate-200 rounded-xl text-center transition hover:bg-slate-50 peer-checked:border-indigo-600 peer-checked:bg-indigo-50 peer-focus-visible:ring-4 peer-focus-visible:ring-indigo-300">
+                  <span class="block text-sm font-bold text-slate-900">PSS / Temporário</span>
+                  <span class="block text-xs text-slate-600 mt-0.5">Contrato temporário na rede pública · INSS</span>
+                </span>
+              </label>
+              <label class="relative block cursor-pointer">
+                <input type="radio" name="regime" value="qpm" class="peer sr-only">
+                <span class="block h-full p-3 border-2 border-slate-200 rounded-xl text-center transition hover:bg-slate-50 peer-checked:border-indigo-600 peer-checked:bg-indigo-50 peer-focus-visible:ring-4 peer-focus-visible:ring-indigo-300">
+                  <span class="block text-sm font-bold text-slate-900">Efetivo / QPM</span>
+                  <span class="block text-xs text-slate-600 mt-0.5">Concursado na rede pública · regime próprio (RPPS)</span>
+                </span>
+              </label>
+              <label class="relative block cursor-pointer">
+                <input type="radio" name="regime" value="clt" class="peer sr-only">
+                <span class="block h-full p-3 border-2 border-slate-200 rounded-xl text-center transition hover:bg-slate-50 peer-checked:border-indigo-600 peer-checked:bg-indigo-50 peer-focus-visible:ring-4 peer-focus-visible:ring-indigo-300">
+                  <span class="block text-sm font-bold text-slate-900">Particular (CLT)</span>
+                  <span class="block text-xs text-slate-600 mt-0.5">Escola privada · carteira assinada · DSR</span>
+                </span>
+              </label>
+            </div>
+          </fieldset>
+
+          <div>
+            <label for="input-valor-hora" class="block text-sm font-semibold text-slate-800 mb-1">Valor da hora-aula (R$)</label>
+            <div class="relative max-w-xs">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-500" aria-hidden="true">R$</span>
+              <input type="text" inputmode="decimal" id="input-valor-hora" value="25,00" aria-describedby="ajuda-valor-hora"
+                     class="w-full h-12 rounded-xl border border-slate-300 pl-10 pr-3 text-base font-semibold focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <p id="ajuda-valor-hora" class="text-sm text-slate-600 mt-1">Quanto você recebe por uma aula dada em sala. A hora-atividade é somada por cima. Cada escola pode ter um valor próprio.</p>
           </div>
-        </div>
 
-        <!-- Módulo de Hora-Atividade -->
-        <div class="pt-3 border-t border-slate-100 space-y-3">
-          <div class="flex items-center justify-between">
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700">Percentual de Hora-Atividade / Planeamento</label>
-            <span id="badge-total-ha" class="text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">+ 0h de atividade</span>
-          </div>
+          <fieldset>
+            <legend class="text-sm font-semibold text-slate-800 mb-1">Hora-atividade (planejamento)</legend>
+            <span id="badge-total-ha" class="inline-block text-xs font-bold text-indigo-800 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100 mb-2">+ 0h de atividade</span>
+            <p class="text-sm text-slate-600 mb-3">Tempo pago para planejar e corrigir. O percentual é aplicado sobre as aulas em sala. Confira o que a sua rede ou convenção coletiva define.</p>
 
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <label class="flex items-center justify-center p-2.5 border rounded-xl cursor-pointer hover:bg-slate-50 text-xs font-semibold text-slate-700 has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50 has-[:checked]:text-indigo-900 transition text-center">
-              <input type="radio" name="preset-ha" value="0.3333" checked class="hidden">
-              <span>33,3% (1/3 Lei)</span>
-            </label>
-            <label class="flex items-center justify-center p-2.5 border rounded-xl cursor-pointer hover:bg-slate-50 text-xs font-semibold text-slate-700 has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50 has-[:checked]:text-indigo-900 transition text-center">
-              <input type="radio" name="preset-ha" value="0.20" class="hidden">
-              <span>20% (Estadual)</span>
-            </label>
-            <label class="flex items-center justify-center p-2.5 border rounded-xl cursor-pointer hover:bg-slate-50 text-xs font-semibold text-slate-700 has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50 has-[:checked]:text-indigo-900 transition text-center">
-              <input type="radio" name="preset-ha" value="0.05" class="hidden">
-              <span>5% (Piso CLT)</span>
-            </label>
-            <label class="flex items-center justify-center p-2.5 border rounded-xl cursor-pointer hover:bg-slate-50 text-xs font-semibold text-slate-700 has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50 has-[:checked]:text-indigo-900 transition text-center">
-              <input type="radio" name="preset-ha" value="custom" class="hidden">
-              <span>Outro %</span>
-            </label>
-          </div>
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              <label class="relative block cursor-pointer">
+                <input type="radio" name="preset-ha" value="0.3333" checked class="peer sr-only">
+                <span class="flex flex-col items-center justify-center h-full min-h-[52px] p-2 border-2 border-slate-200 rounded-xl text-center transition hover:bg-slate-50 peer-checked:border-indigo-600 peer-checked:bg-indigo-50 peer-focus-visible:ring-4 peer-focus-visible:ring-indigo-300">
+                  <span class="text-sm font-bold text-slate-900">33,3%</span>
+                  <span class="text-xs text-slate-600">das aulas</span>
+                </span>
+              </label>
+              <label class="relative block cursor-pointer">
+                <input type="radio" name="preset-ha" value="0.5" class="peer sr-only">
+                <span class="flex flex-col items-center justify-center h-full min-h-[52px] p-2 border-2 border-slate-200 rounded-xl text-center transition hover:bg-slate-50 peer-checked:border-indigo-600 peer-checked:bg-indigo-50 peer-focus-visible:ring-4 peer-focus-visible:ring-indigo-300">
+                  <span class="text-sm font-bold text-slate-900">50%</span>
+                  <span class="text-xs text-slate-600">1/3 da jornada</span>
+                </span>
+              </label>
+              <label class="relative block cursor-pointer">
+                <input type="radio" name="preset-ha" value="0.20" class="peer sr-only">
+                <span class="flex flex-col items-center justify-center h-full min-h-[52px] p-2 border-2 border-slate-200 rounded-xl text-center transition hover:bg-slate-50 peer-checked:border-indigo-600 peer-checked:bg-indigo-50 peer-focus-visible:ring-4 peer-focus-visible:ring-indigo-300">
+                  <span class="text-sm font-bold text-slate-900">20%</span>
+                  <span class="text-xs text-slate-600">das aulas</span>
+                </span>
+              </label>
+              <label class="relative block cursor-pointer">
+                <input type="radio" name="preset-ha" value="0.05" class="peer sr-only">
+                <span class="flex flex-col items-center justify-center h-full min-h-[52px] p-2 border-2 border-slate-200 rounded-xl text-center transition hover:bg-slate-50 peer-checked:border-indigo-600 peer-checked:bg-indigo-50 peer-focus-visible:ring-4 peer-focus-visible:ring-indigo-300">
+                  <span class="text-sm font-bold text-slate-900">5%</span>
+                  <span class="text-xs text-slate-600">CLT (convenção)</span>
+                </span>
+              </label>
+              <label class="relative block cursor-pointer col-span-2 sm:col-span-1">
+                <input type="radio" name="preset-ha" value="custom" class="peer sr-only">
+                <span class="flex flex-col items-center justify-center h-full min-h-[52px] p-2 border-2 border-slate-200 rounded-xl text-center transition hover:bg-slate-50 peer-checked:border-indigo-600 peer-checked:bg-indigo-50 peer-focus-visible:ring-4 peer-focus-visible:ring-indigo-300">
+                  <span class="text-sm font-bold text-slate-900">Outro %</span>
+                  <span class="text-xs text-slate-600">digitar</span>
+                </span>
+              </label>
+            </div>
 
-          <div id="container-pct-custom" class="flex items-center gap-3 pt-1">
-            <div class="w-1/2">
-              <label for="input-pct-ha" class="block text-[11px] font-semibold text-slate-600 mb-1">Percentual aplicado (%)</label>
-              <div class="relative">
-                <input type="number" id="input-pct-ha" value="33.33" step="0.5" min="0" max="100" class="w-full rounded-xl border-slate-300 border px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none pr-8">
-                <span class="absolute right-3 top-2.5 text-xs text-slate-400 font-bold">%</span>
+            <!-- O app.js esconde a coluna do campo (parent do parent do input) fora do "Outro %" -->
+            <div class="flex items-end gap-4 pt-3">
+              <div class="w-1/2">
+                <label for="input-pct-ha" class="block text-sm font-semibold text-slate-800 mb-1">Percentual aplicado</label>
+                <div class="relative">
+                  <input type="text" inputmode="decimal" id="input-pct-ha" value="33,33"
+                         class="w-full h-12 rounded-xl border border-slate-300 pl-3 pr-9 text-base font-semibold focus:ring-2 focus:ring-indigo-500">
+                  <span class="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-500" aria-hidden="true">%</span>
+                </div>
+              </div>
+              <div class="flex-1 text-sm text-slate-600">
+                <span class="block">Horas pagas por semana:</span>
+                <strong id="res-jornada-total" class="text-slate-900 text-base">0h semanais</strong>
               </div>
             </div>
-            <div class="w-1/2 text-xs text-slate-500 pt-3">
-              <span class="block">Horas remuneradas totais:</span>
-              <strong id="res-jornada-total" class="text-slate-800 text-sm">0h semanais</strong>
+          </fieldset>
+        </section>
+
+        <!-- Suas escolas -->
+        <section class="space-y-4" aria-labelledby="titulo-escolas">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 id="titulo-escolas" class="text-lg font-bold text-slate-900">Suas escolas</h2>
+              <p class="text-sm text-slate-600">Cada escola é um vínculo, com regime, valor da hora e deslocamento próprios.</p>
+            </div>
+            <button type="button" id="btn-adicionar-escola"
+                    class="inline-flex items-center justify-center gap-2 h-12 px-5 rounded-xl text-base font-bold bg-indigo-600 hover:bg-indigo-700 text-white transition shadow-sm">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+              Adicionar escola
+            </button>
+          </div>
+
+          <div id="container-escolas" class="space-y-4"></div>
+        </section>
+
+        <!-- Combustível e extras -->
+        <details class="bg-white rounded-2xl shadow-sm border border-slate-200 group" open>
+          <summary class="flex items-center justify-between gap-2 p-5 sm:p-6 text-lg font-bold text-slate-900 rounded-2xl">
+            <span>Combustível, gratificações e contribuição</span>
+            <svg class="seta w-5 h-5 text-slate-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+          </summary>
+          <div class="px-5 sm:px-6 pb-6 space-y-5">
+            <p class="text-sm text-slate-600">Os valores abaixo são exemplos. Ajuste para o seu carro e para a sua realidade.</p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label for="input-gratificacoes" class="block text-sm font-semibold text-slate-800 mb-1">Gratificações mensais fixas (R$)</label>
+                <div class="relative">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-500" aria-hidden="true">R$</span>
+                  <input type="text" inputmode="decimal" id="input-gratificacoes" value="0"
+                         class="w-full h-12 rounded-xl border border-slate-300 pl-10 pr-3 text-base font-semibold focus:ring-2 focus:ring-indigo-500">
+                </div>
+              </div>
+            </div>
+
+            <!-- O app.js insere o bloco de alíquotas do RPPS logo depois desta grade -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label for="input-consumo" class="block text-sm font-semibold text-slate-800 mb-1">Consumo do veículo (km por litro)</label>
+                <input type="text" inputmode="decimal" id="input-consumo" value="10"
+                       class="w-full h-12 rounded-xl border border-slate-300 px-3 text-base font-semibold focus:ring-2 focus:ring-indigo-500">
+              </div>
+              <div>
+                <label for="input-gasolina" class="block text-sm font-semibold text-slate-800 mb-1">Preço da gasolina (R$ por litro)</label>
+                <div class="relative">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-500" aria-hidden="true">R$</span>
+                  <input type="text" inputmode="decimal" id="input-gasolina" value="5,90"
+                         class="w-full h-12 rounded-xl border border-slate-300 pl-10 pr-3 text-base font-semibold focus:ring-2 focus:ring-indigo-500">
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        </details>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-slate-100">
-          <div>
-            <label for="input-valor-hora" class="block text-xs font-semibold text-slate-700 mb-1">Valor da Hora-Aula Padrão (R$)</label>
-            <input type="number" id="input-valor-hora" value="25.00" step="0.50" min="1" class="w-full rounded-xl border-slate-300 border px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-          </div>
-          <div>
-            <label for="input-gratificacoes" class="block text-xs font-semibold text-slate-700 mb-1">Gratificações Mensais Fixas (R$)</label>
-            <input type="number" id="input-gratificacoes" value="0" step="50" min="0" class="w-full rounded-xl border-slate-300 border px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-4 pt-2 border-t border-slate-100">
-          <div>
-            <label for="input-consumo" class="block text-xs font-semibold text-slate-700 mb-1">Consumo Veículo (Km/L)</label>
-            <input type="number" id="input-consumo" value="10" step="0.5" min="1" class="w-full rounded-xl border-slate-300 border px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-          </div>
-          <div>
-            <label for="input-gasolina" class="block text-xs font-semibold text-slate-700 mb-1">Preço Gasolina (R$)</label>
-            <input type="number" id="input-gasolina" value="5.90" step="0.10" min="1" class="w-full rounded-xl border-slate-300 border px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-          </div>
-        </div>
       </div>
 
-      <!-- 2. Lista Dinâmica de Colégios -->
-      <div class="space-y-4">
-        <div class="flex items-center justify-between">
-          <div>
-            <h2 class="text-sm font-bold uppercase tracking-wider text-slate-900">2. Os seus Colégios e Turmas</h2>
-            <p class="text-xs text-slate-500">Adicione todas as escolas onde leciona ou pretende lecionar</p>
+      <!-- Coluna de resultados -->
+      <aside id="resultados" class="lg:col-span-5 space-y-6 lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto scroll-mt-4" aria-label="Resultados">
+
+        <section class="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200 space-y-5" aria-labelledby="titulo-resultado">
+          <div class="flex justify-between items-center gap-2 border-b border-slate-100 pb-3">
+            <h2 id="titulo-resultado" class="text-sm font-bold text-slate-700">Total consolidado</h2>
+            <span id="badge-total-aulas" class="text-xs font-bold text-indigo-800 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100">0h semanais contratadas</span>
           </div>
-          <button type="button" id="btn-adicionar-escola" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white transition shadow-sm">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-            + Adicionar Colégio
-          </button>
-        </div>
 
-        <div id="container-escolas" class="space-y-4"></div>
+          <div>
+            <span class="block text-sm font-semibold text-slate-600">Salário líquido real no bolso</span>
+            <div id="res-salario-liquido" class="text-4xl font-black text-slate-900 tracking-tight mt-1">R$ 0,00</div>
+            <p class="text-sm text-slate-600 mt-1">Depois de previdência, imposto de renda e combustível.</p>
+          </div>
+
+          <!-- Estrutura usada pelo app.js: o aviso legal é inserido depois deste bloco -->
+          <div class="pt-4 border-t border-slate-100 text-sm space-y-2 text-slate-700">
+            <div class="flex justify-between items-center gap-2">
+              <span>Remuneração bruta total</span>
+              <span id="res-salario-bruto" class="font-bold text-slate-900">R$ 0,00</span>
+            </div>
+            <div class="flex justify-between items-center gap-2 text-rose-700">
+              <span>Previdência e imposto de renda</span>
+              <span id="res-total-descontos" class="font-semibold">- R$ 0,00</span>
+            </div>
+            <div class="flex justify-between items-center gap-2 text-amber-800">
+              <span>Combustível por mês</span>
+              <span id="res-total-combustivel" class="font-semibold">- R$ 0,00</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4" aria-labelledby="titulo-ranking">
+          <h2 id="titulo-ranking" class="text-sm font-bold text-slate-800">Qual escola compensa menos?</h2>
+          <p class="text-sm text-slate-600">Cada escola é comparada pelo que sobra por hora, depois de descontar impostos, gasolina e o tempo de deslocamento.</p>
+          <div id="container-ranking-escolas" class="space-y-2 text-sm"></div>
+        </section>
+
+      </aside>
+    </div>
+
+    <!-- Publicidade: fora do fluxo de preenchimento, depois dos resultados -->
+    <section class="mt-8" aria-label="Publicidade">
+      <p class="text-xs text-slate-500 mb-1 text-center">Publicidade</p>
+      <div class="ad-slot-reserved">
+        <!-- Colar aqui o código do anúncio do AdSense. Depois da aprovação, remova a borda tracejada em css/style.css -->
       </div>
-
     </section>
 
-    <!-- Coluna de Diagnóstico e Resultados (5 Colunas) -->
-    <aside class="lg:col-span-5 space-y-6">
-      
-      <!-- Card Consolidado do Portfólio -->
-      <div class="bg-white p-6 sm:p-7 rounded-2xl shadow-sm border border-slate-200 space-y-5">
-        <div class="flex justify-between items-center border-b border-slate-100 pb-3">
-          <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Total Consolidado</span>
-          <span id="badge-total-aulas" class="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100">0 aulas semanais</span>
-        </div>
+    <!-- Conteúdo explicativo (SEO) -->
+    <section class="mt-10 bg-white p-5 sm:p-8 rounded-2xl shadow-sm border border-slate-200 space-y-8" aria-labelledby="titulo-como-funciona">
+      <div class="space-y-3 max-w-3xl">
+        <h2 id="titulo-como-funciona" class="text-xl font-bold text-slate-900">Como a calculadora faz as contas</h2>
+        <p class="text-base text-slate-700">Para cada escola, calculamos a remuneração bruta com as aulas semanais, a hora-atividade e o valor da hora-aula. Depois somamos os vínculos, descontamos a previdência e o imposto de renda e, por fim, o combustível gasto no deslocamento. O resultado é o que realmente sobra no seu bolso a cada mês.</p>
+        <p class="text-base text-slate-700">Na rede particular (CLT), a conta inclui o descanso semanal remunerado. Na rede pública, o desconto de previdência depende do regime: INSS para contratos temporários (PSS) e regime próprio (RPPS) para efetivos.</p>
+      </div>
 
-        <div>
-          <span class="block text-xs font-semibold text-slate-500 uppercase tracking-wide">Salário Líquido Real no Bolso</span>
-          <div id="res-salario-liquido" class="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight mt-1">R$ 0,00</div>
-          <p class="text-[11px] text-slate-400 mt-1">Livre de Previdência, IRPF e Combustível total</p>
-        </div>
-
-        <div class="pt-4 border-t border-slate-100 text-xs space-y-2 text-slate-600">
-          <div class="flex justify-between items-center">
-            <span>Remuneração Bruta Total:</span>
-            <span id="res-salario-bruto" class="font-bold text-slate-800 text-sm">R$ 0,00</span>
-          </div>
-          <div class="flex justify-between items-center text-rose-600">
-            <span>Deduções Obrigatórias:</span>
-            <span id="res-total-descontos" class="font-semibold text-sm">- R$ 0,00</span>
-          </div>
-          <div class="flex justify-between items-center text-amber-700">
-            <span>Combustível Mensal Total:</span>
-            <span id="res-total-combustivel" class="font-semibold text-sm">- R$ 0,00</span>
-          </div>
+      <div class="max-w-3xl">
+        <h2 class="text-xl font-bold text-slate-900 mb-3">Perguntas frequentes</h2>
+        <div class="divide-y divide-slate-200 border border-slate-200 rounded-xl">
+          <details class="group">
+            <summary class="flex items-center justify-between gap-3 p-4 text-base font-semibold text-slate-900">
+              Como a calculadora chega ao salário líquido real?
+              <svg class="seta w-5 h-5 shrink-0 text-slate-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </summary>
+            <p class="px-4 pb-4 text-base text-slate-700">Somamos o bruto de cada escola (aulas mais hora-atividade), descontamos a previdência (INSS ou RPPS) e o IRPF e, por fim, subtraímos o gasto com combustível do deslocamento. É uma estimativa mensal, sem 13º, férias e FGTS.</p>
+          </details>
+          <details class="group">
+            <summary class="flex items-center justify-between gap-3 p-4 text-base font-semibold text-slate-900">
+              Quanto desconta de INSS e de imposto de renda em 2026?
+              <svg class="seta w-5 h-5 shrink-0 text-slate-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </summary>
+            <p class="px-4 pb-4 text-base text-slate-700">Em 2026, o INSS de empregados é progressivo, de 7,5% a 14%, até o teto de contribuição de R$ 8.475,55. Quem recebe até R$ 5 mil por mês tem o imposto de renda zerado, e entre R$ 5.000,01 e R$ 7.350 há redução gradual do imposto (Lei 15.270/2025). As fontes estão na seção Tabelas utilizadas.</p>
+          </details>
+          <details class="group">
+            <summary class="flex items-center justify-between gap-3 p-4 text-base font-semibold text-slate-900">
+              O que é hora-atividade?
+              <svg class="seta w-5 h-5 shrink-0 text-slate-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </summary>
+            <p class="px-4 pb-4 text-base text-slate-700">É a parte da jornada paga para planejar aulas, corrigir provas e atender famílias, sem estar em sala. O percentual varia conforme a rede, o contrato ou a convenção coletiva; por isso a calculadora permite escolher ou digitar o seu.</p>
+          </details>
+          <details class="group">
+            <summary class="flex items-center justify-between gap-3 p-4 text-base font-semibold text-slate-900">
+              Qual a diferença entre PSS, QPM e CLT?
+              <svg class="seta w-5 h-5 shrink-0 text-slate-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </summary>
+            <p class="px-4 pb-4 text-base text-slate-700">PSS é a contratação temporária na rede pública, com contribuição ao INSS. Efetivo/QPM é o servidor concursado, que contribui ao regime próprio de previdência (RPPS) do estado ou município. CLT é a carteira assinada na rede particular, com descanso semanal remunerado. As regras exatas variam por rede.</p>
+          </details>
+          <details class="group">
+            <summary class="flex items-center justify-between gap-3 p-4 text-base font-semibold text-slate-900">
+              Como saber qual escola compensa menos?
+              <svg class="seta w-5 h-5 shrink-0 text-slate-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </summary>
+            <p class="px-4 pb-4 text-base text-slate-700">O ranking tira cada escola do cálculo e mostra quanto você perde no contracheque, quanto economiza de gasolina e quanto sobra por hora, contando aulas, hora-atividade e tempo de deslocamento.</p>
+          </details>
+          <details class="group">
+            <summary class="flex items-center justify-between gap-3 p-4 text-base font-semibold text-slate-900">
+              Meus dados ficam salvos?
+              <svg class="seta w-5 h-5 shrink-0 text-slate-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </summary>
+            <p class="px-4 pb-4 text-base text-slate-700">Os valores que você digita na calculadora ficam apenas no seu navegador e não são enviados a nenhum servidor.</p>
+          </details>
+          <details class="group">
+            <summary class="flex items-center justify-between gap-3 p-4 text-base font-semibold text-slate-900">
+              Os resultados são oficiais?
+              <svg class="seta w-5 h-5 shrink-0 text-slate-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </summary>
+            <p class="px-4 pb-4 text-base text-slate-700">Não. São estimativas para ajudar na sua decisão e não substituem o contracheque nem a orientação de um contador ou advogado.</p>
+          </details>
         </div>
       </div>
 
-      <!-- Card de Otimização: Qual Escola Abandonar? -->
-      <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
-        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-800">Otimizador de Viabilidade</h3>
-          <span class="text-[10px] text-slate-400">Retorno marginal real</span>
+      <!-- Tabelas utilizadas -->
+      <details id="tabelas-referencia" class="max-w-3xl border border-slate-200 rounded-xl">
+        <summary class="flex items-center justify-between gap-3 p-4 text-base font-bold text-slate-900">
+          <span id="titulo-tabelas">Tabelas utilizadas (INSS e IRRF de 2026)</span>
+          <svg class="seta w-5 h-5 shrink-0 text-slate-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+        </summary>
+        <div class="px-4 pb-4 space-y-3 text-base text-slate-700">
+          <p>Os cálculos usam a tabela de contribuição do INSS (Portaria Interministerial MPS/MF nº 13/2026) e a tabela do imposto de renda com a redução da Lei 15.270/2025. As tabelas são revisadas todo início de ano. Confirme sempre nas fontes oficiais:</p>
+          <ul class="list-disc pl-5 space-y-1">
+            <li><a class="text-indigo-700 underline hover:text-indigo-900" href="https://www.gov.br/previdencia" target="_blank" rel="noopener noreferrer">Ministério da Previdência Social</a></li>
+            <li><a class="text-indigo-700 underline hover:text-indigo-900" href="https://www.gov.br/receitafederal" target="_blank" rel="noopener noreferrer">Receita Federal</a></li>
+          </ul>
+          <div id="tabelas-conteudo" class="overflow-x-auto"></div>
         </div>
-        
-        <p class="text-xs text-slate-500">
-          Classificação das escolas pelo valor líquido real gerado por hora após descontar deslocamento, combustível e salto de faixa fiscal:
-        </p>
-
-        <div id="container-ranking-escolas" class="space-y-2 text-xs"></div>
-      </div>
-
-      <!-- Slot AdSense Lateral -->
-      <div class="ad-slot-reserved p-6 text-center text-xs text-slate-400">
-        <span class="font-semibold text-slate-500">[ Anúncio ]</span>
-        <span class="text-[11px] text-slate-400 mt-1">Google AdSense</span>
-      </div>
-
-    </aside>
+      </details>
+    </section>
 
   </main>
 
-  <!-- Rodapé Institucional -->
-  <footer class="bg-white border-t border-slate-200 py-8 text-center text-xs text-slate-500 w-full mt-6">
-    <div class="max-w-6xl mx-auto px-4 space-y-3">
-      <div class="flex flex-wrap justify-center gap-6 text-slate-600 font-medium">
-        <a href="index.html" class="hover:text-indigo-600 transition">Início</a>
-        <a href="politica-privacidade.html" class="hover:text-indigo-600 transition">Política de Privacidade</a>
-        <a href="termos-de-uso.html" class="hover:text-indigo-600 transition">Termos de Uso</a>
-        <a href="sobre.html" class="hover:text-indigo-600 transition">Sobre e Contato</a>
+  <!-- Barra fixa do celular: mantém o resultado sempre à vista -->
+  <div id="barra-liquido" class="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-slate-900 text-white border-t border-slate-700" style="padding-bottom: env(safe-area-inset-bottom, 0px);">
+    <a href="#resultados" class="flex items-center justify-between gap-3 px-4 py-3">
+      <span class="text-sm text-slate-300">Líquido real <span class="sr-only">por mês</span></span>
+      <span id="barra-liquido-valor" class="text-xl font-black">R$ 0,00</span>
+      <span class="text-sm font-semibold text-indigo-300 underline">Detalhes</span>
+    </a>
+  </div>
+
+  <!-- Aviso de cookies (LGPD). A escolha fica salva; carregue o AdSense só após "all" -->
+  <div id="aviso-cookies" class="fixed bottom-0 inset-x-0 z-[60]" role="dialog" aria-label="Aviso de cookies" hidden>
+    <div class="m-3 sm:max-w-xl sm:mx-auto bg-white border border-slate-300 rounded-2xl shadow-xl p-4 text-sm text-slate-700">
+      <p>Usamos cookies para publicidade e para entender como o site é usado. Veja os detalhes na <a href="politica-privacidade.html" class="text-indigo-700 underline">Política de Privacidade</a>.</p>
+      <div class="flex flex-col sm:flex-row gap-2 mt-3">
+        <button type="button" data-consentimento="all" class="h-11 px-4 rounded-xl font-bold bg-indigo-600 hover:bg-indigo-700 text-white">Aceitar</button>
+        <button type="button" data-consentimento="essential" class="h-11 px-4 rounded-xl font-bold bg-slate-100 hover:bg-slate-200 text-slate-800">Somente essenciais</button>
       </div>
-      <p>© 2026 Calculadora do Professor. Análise de otimização de carga horária docente.</p>
+    </div>
+  </div>
+
+  <!-- Rodapé -->
+  <footer class="bg-white border-t border-slate-200 py-8 text-center text-sm text-slate-600 w-full">
+    <div class="max-w-6xl mx-auto px-4 space-y-3">
+      <nav aria-label="Rodapé" class="flex flex-wrap justify-center gap-x-6 gap-y-2 font-medium">
+        <a href="./" class="hover:text-indigo-700 underline-offset-2 hover:underline">Início</a>
+        <a href="politica-privacidade.html" class="hover:text-indigo-700 underline-offset-2 hover:underline">Política de Privacidade</a>
+        <a href="termos-de-uso.html" class="hover:text-indigo-700 underline-offset-2 hover:underline">Termos de Uso</a>
+        <a href="sobre.html" class="hover:text-indigo-700 underline-offset-2 hover:underline">Sobre e Contato</a>
+      </nav>
+      <p class="max-w-2xl mx-auto">Esta ferramenta traz estimativas para fins informativos. Não substitui o contracheque nem a orientação de um contador ou advogado.</p>
+      <p>© 2026 Calculadora do Professor</p>
     </div>
   </footer>
 
   <!-- Scripts -->
   <script type="module" src="js/app.js"></script>
+  <script type="module" src="js/ui-tabelas.js"></script>
+  <script>
+    (function () {
+      // Espelha o líquido real na barra fixa do celular
+      var origem = document.getElementById('res-salario-liquido');
+      var destino = document.getElementById('barra-liquido-valor');
+      if (origem && destino) {
+        var copiar = function () { destino.textContent = origem.textContent; };
+        new MutationObserver(copiar).observe(origem, { childList: true, characterData: true, subtree: true });
+        copiar();
+      }
+
+      // Abre a seção de tabelas quando o link do cabeçalho é usado
+      var tabelas = document.getElementById('tabelas-referencia');
+      function abrirTabelas() {
+        if (tabelas && location.hash === '#tabelas-referencia') tabelas.open = true;
+      }
+      window.addEventListener('hashchange', abrirTabelas);
+      abrirTabelas();
+
+      // Aviso de cookies
+      var aviso = document.getElementById('aviso-cookies');
+      if (aviso) {
+        var escolhido = null;
+        try { escolhido = localStorage.getItem('cp-consentimento'); } catch (e) {}
+        if (!escolhido) aviso.hidden = false;
+        aviso.addEventListener('click', function (e) {
+          var botao = e.target.closest('[data-consentimento]');
+          if (!botao) return;
+          try { localStorage.setItem('cp-consentimento', botao.dataset.consentimento); } catch (err) {}
+          aviso.hidden = true;
+          document.dispatchEvent(new CustomEvent('consentimento', { detail: botao.dataset.consentimento }));
+        });
+      }
+    })();
+  </script>
 </body>
 </html>
