@@ -62,8 +62,8 @@ export function parseNumeroBR(valor) {
    Estado
    ============================================================ */
 const ESCOLAS_PADRAO = () => ([
-  { id: 1, nome: 'Escola Principal (Sede)', aulas: 20, diasSemana: 5, kmIdaVolta: 10, minutosDia: 20, regime: null, valorHora: null },
-  { id: 2, nome: 'Escola B', aulas: 6, diasSemana: 2, kmIdaVolta: 25, minutosDia: 45, regime: null, valorHora: null }
+  { id: 1, nome: 'Escola Principal (Sede)', aulas: 20, diasSemana: 5, kmIdaVolta: 10, minutosDia: 20, regime: null, valorHora: null, aberta: false },
+  { id: 2, nome: 'Escola B', aulas: 6, diasSemana: 2, kmIdaVolta: 25, minutosDia: 45, regime: null, valorHora: null, aberta: false }
 ]);
 
 let escolas = ESCOLAS_PADRAO();
@@ -85,7 +85,8 @@ function sanitizarEscola(o, idFallback) {
     kmIdaVolta: num(o?.kmIdaVolta, LIMITES.kmIdaVolta),
     minutosDia: num(o?.minutosDia, LIMITES.minutosDia),
     regime: REGIMES[o?.regime] ? o.regime : null,
-    valorHora: Number.isNaN(vh) ? null : clamp(vh, 0, 1000)
+    valorHora: Number.isNaN(vh) ? null : clamp(vh, 0, 1000),
+    aberta: false
   };
 }
 
@@ -219,9 +220,11 @@ export function calcularCenario(lista, params) {
  * Ordenado do menor para o maior retorno por hora.
  */
 export function analisarRanking(lista, params, atual) {
-  if (lista.length <= 1) return [];
+  // Só entram no ranking escolas com aulas preenchidas (escola vazia não é comparável).
+  const ativas = lista.filter((e) => e.aulas > 0);
+  if (ativas.length <= 1) return [];
 
-  return lista.map((esc) => {
+  return ativas.map((esc) => {
     const restante = lista.filter((e) => e.id !== esc.id);
     const sem = calcularCenario(restante, params);
 
@@ -247,55 +250,95 @@ export function analisarRanking(lista, params, atual) {
 /* ============================================================
    Interface: cards de escola
    ============================================================ */
-const CLASSE_INPUT = 'w-full rounded-lg border-slate-300 border px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none';
+const CLASSE_INPUT = 'w-full h-11 rounded-lg border border-slate-300 bg-white px-3 text-base font-semibold focus:ring-2 focus:ring-indigo-500';
 
-function htmlCampo(esc, chave, rotulo, valor, dica = '') {
+function htmlCampo(esc, chave, rotulo, valor, placeholder = '0') {
   const id = `esc-${esc.id}-${chave}`;
   return `
     <div>
-      <label for="${id}" class="block text-xs font-semibold text-slate-600 mb-1">${rotulo}</label>
+      <label for="${id}" class="block text-sm font-semibold text-slate-700 mb-1">${rotulo}</label>
       <input type="text" inputmode="decimal" id="${id}" data-id="${esc.id}" data-campo="${chave}"
-             value="${escaparHTML(valor)}" ${dica} class="${CLASSE_INPUT}">
+             value="${escaparHTML(valor)}" placeholder="${escaparHTML(placeholder)}" class="${CLASSE_INPUT}">
     </div>`;
 }
 
-function htmlCardEscola(esc, index) {
+// Mostra vazio quando o valor é 0, para o campo não parecer "preenchido".
+const valorOuVazio = (n) => (n ? fmtCampo(n) : '');
+
+export function textoResumoEscola(esc) {
+  if (!esc.aulas) return 'Preencha os dados desta escola';
+  const partes = [`${fmtCampo(esc.aulas)} aulas/sem`, `${fmtCampo(esc.diasSemana)} dias/sem`];
+  if (esc.kmIdaVolta) partes.push(`${fmtCampo(esc.kmIdaVolta)} km/dia`);
+  return partes.join(' · ');
+}
+
+export function htmlCardEscola(esc, index) {
   const id = esc.id;
-  const opcoes = [['', 'Seguir regime principal'], ...Object.entries(REGIMES)]
+  const opcoes = [['', 'Igual ao geral'], ...Object.entries(REGIMES)]
     .map(([v, t]) => `<option value="${v}" ${(esc.regime || '') === v ? 'selected' : ''}>${t}</option>`)
     .join('');
 
   return `
-    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-      <div class="flex items-center gap-2 flex-grow">
-        <span class="text-xs font-black bg-slate-100 text-slate-700 w-6 h-6 rounded-full flex items-center justify-center">${index + 1}</span>
-        <input type="text" id="esc-${id}-nome" aria-label="Nome da escola ${index + 1}" data-id="${id}" data-campo="nome"
-               maxlength="60" value="${escaparHTML(esc.nome)}"
-               class="text-sm font-bold text-slate-900 border border-transparent hover:border-slate-300 bg-transparent focus:bg-white focus:ring-1 focus:ring-indigo-500 rounded px-1.5 py-0.5 w-full sm:w-auto">
-      </div>
-      ${escolas.length > 1 ? `
-        <button type="button" data-id="${id}" class="btn-remover-escola text-xs font-semibold text-rose-600 hover:text-rose-800 px-2 py-1 rounded transition" title="Remover esta escola">
-          Excluir
-        </button>` : ''}
-    </div>
+    <summary class="flex items-center gap-3 p-4 rounded-xl hover:bg-slate-50">
+      <span class="w-7 h-7 shrink-0 rounded-full bg-slate-100 text-slate-700 text-xs font-black flex items-center justify-center">${index + 1}</span>
+      <span class="flex-1 min-w-0">
+        <span class="block font-bold text-slate-900 truncate" data-nome-resumo="${id}">${escaparHTML(esc.nome)}</span>
+        <span class="block text-sm text-slate-600" data-resumo="${id}">${escaparHTML(textoResumoEscola(esc))}</span>
+      </span>
+      <span class="text-right shrink-0">
+        <span class="block text-xs text-slate-600">Bruto/mês</span>
+        <strong class="text-sm text-slate-900" data-bruto="${id}">R$ 0,00</strong>
+      </span>
+      <svg class="seta w-5 h-5 shrink-0 text-slate-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+    </summary>
 
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-      ${htmlCampo(esc, 'aulas', 'Aulas por semana', fmtCampo(esc.aulas))}
-      ${htmlCampo(esc, 'diasSemana', 'Dias por semana na escola', fmtCampo(esc.diasSemana))}
-      ${htmlCampo(esc, 'kmIdaVolta', 'Km por dia (ida e volta)', fmtCampo(esc.kmIdaVolta))}
-    </div>
-
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-      ${htmlCampo(esc, 'minutosDia', 'Deslocamento (min/dia, ida e volta)', fmtCampo(esc.minutosDia))}
+    <div class="px-4 pb-4 pt-4 space-y-5 border-t border-slate-100">
       <div>
-        <label for="esc-${id}-regime" class="block text-xs font-semibold text-slate-600 mb-1">Regime desta escola</label>
-        <select id="esc-${id}-regime" data-id="${id}" data-campo="regime" class="${CLASSE_INPUT} bg-white">${opcoes}</select>
+        <label for="esc-${id}-nome" class="block text-sm font-semibold text-slate-700 mb-1">Nome da escola</label>
+        <input type="text" id="esc-${id}-nome" data-id="${id}" data-campo="nome" maxlength="60"
+               value="${escaparHTML(esc.nome)}" class="${CLASSE_INPUT}">
       </div>
-      ${htmlCampo(esc, 'valorHora', 'Valor da hora-aula (R$)', esc.valorHora == null ? '' : fmtCampo(esc.valorHora), 'placeholder="padrão"')}
-    </div>
 
-    <p class="text-xs text-slate-500">Bruto desta escola: <strong data-bruto="${id}" class="text-slate-700">R$ 0,00</strong></p>
+      <fieldset>
+        <legend class="text-sm font-bold text-slate-900 mb-2">Aulas</legend>
+        <div class="grid grid-cols-2 gap-3">
+          ${htmlCampo(esc, 'aulas', 'Aulas por semana', valorOuVazio(esc.aulas))}
+          ${htmlCampo(esc, 'diasSemana', 'Dias por semana na escola', valorOuVazio(esc.diasSemana))}
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend class="text-sm font-bold text-slate-900 mb-2">Deslocamento até esta escola</legend>
+        <div class="grid grid-cols-2 gap-3">
+          ${htmlCampo(esc, 'kmIdaVolta', 'Km por dia (ida e volta)', valorOuVazio(esc.kmIdaVolta))}
+          ${htmlCampo(esc, 'minutosDia', 'Tempo por dia (min, ida e volta)', valorOuVazio(esc.minutosDia))}
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend class="text-sm font-bold text-slate-900">Só desta escola (opcional)</legend>
+        <p class="text-sm text-slate-600 mb-2">Deixe como está para usar as informações gerais.</p>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label for="esc-${id}-regime" class="block text-sm font-semibold text-slate-700 mb-1">Regime</label>
+            <select id="esc-${id}-regime" data-id="${id}" data-campo="regime" class="${CLASSE_INPUT}">${opcoes}</select>
+          </div>
+          ${htmlCampo(esc, 'valorHora', 'Valor da hora-aula (R$)', esc.valorHora == null ? '' : fmtCampo(esc.valorHora), 'igual ao geral')}
+        </div>
+      </fieldset>
+
+      <div class="flex justify-end">
+        <button type="button" data-id="${id}" class="btn-remover-escola text-sm font-semibold text-rose-700 hover:text-rose-900 px-3 py-2 rounded-lg hover:bg-rose-50 transition">
+          Excluir esta escola
+        </button>
+      </div>
+    </div>
   `;
+}
+
+function atualizarContadorEscolas() {
+  const el = document.getElementById('contador-escolas');
+  if (el) el.textContent = escolas.length === 1 ? '1 escola' : `${escolas.length} escolas`;
 }
 
 function renderizarFormularioEscolas() {
@@ -304,20 +347,21 @@ function renderizarFormularioEscolas() {
   container.innerHTML = '';
 
   escolas.forEach((esc, index) => {
-    const card = document.createElement('div');
-    card.className = 'bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4';
+    const card = document.createElement('details');
+    card.className = 'border border-slate-200 rounded-xl bg-white';
     card.dataset.cardId = esc.id;
+    if (esc.aberta) card.open = true;
     card.innerHTML = htmlCardEscola(esc, index);
     container.appendChild(card);
   });
 
   if (!escolas.length) {
     container.innerHTML = `
-      <div class="p-8 text-center border-2 border-dashed border-slate-300 rounded-2xl bg-white">
-        <p class="text-sm text-slate-600 mb-3">Comece adicionando a primeira escola onde você dá aula.</p>
-        <button type="button" class="btn-adicionar-vazio px-4 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white">Adicionar escola</button>
+      <div class="p-6 text-center border-2 border-dashed border-slate-300 rounded-xl bg-slate-50">
+        <p class="text-sm text-slate-700">Nenhuma escola cadastrada. Adicione a primeira escola onde você dá aula.</p>
       </div>`;
   }
+  atualizarContadorEscolas();
 }
 
 function aoEditarEscola(e) {
@@ -344,19 +388,24 @@ function aoEditarEscola(e) {
 function adicionarEscola() {
   const id = nextId++;
   const letra = String.fromCharCode(65 + (contadorNomes++ % 26));
+  const nome = `Escola ${letra}`;
+
+  // Recolhe as outras para o foco ficar na escola nova; ela começa vazia (sem números inventados).
+  escolas.forEach((e) => { e.aberta = false; });
   escolas.push({
-    id, nome: `Escola ${letra}`, aulas: 4, diasSemana: 2, kmIdaVolta: 20,
-    minutosDia: 30, regime: null, valorHora: null
+    id, nome, aulas: 0, diasSemana: 0, kmIdaVolta: 0, minutosDia: 0,
+    regime: null, valorHora: null, aberta: true
   });
   renderizarFormularioEscolas();
   processarSimulacao();
 
   const campoNome = document.getElementById(`esc-${id}-nome`);
   if (campoNome) {
+    campoNome.scrollIntoView({ behavior: 'smooth', block: 'center' });
     campoNome.focus();
     campoNome.select();
-    campoNome.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
+  mostrarToast(`${nome} adicionada. Preencha os dados dela.`);
 }
 
 function removerEscola(id) {
@@ -490,6 +539,13 @@ function processarSimulacao() {
     if (el) el.textContent = fmtMoeda(v.bruto);
   });
 
+  escolas.forEach((esc) => {
+    const r = document.querySelector(`[data-resumo="${esc.id}"]`);
+    if (r) r.textContent = textoResumoEscola(esc);
+    const n = document.querySelector(`[data-nome-resumo="${esc.id}"]`);
+    if (n) n.textContent = esc.nome;
+  });
+
   const set = (id, texto) => { const el = document.getElementById(id); if (el) el.textContent = texto; };
   set('badge-total-ha', `+ ${cenario.horasAtividade}h de atividade`);
   set('res-jornada-total', `${cenario.jornadaTotalSemanal.toFixed(1)}h semanais (${cenario.totalAulasSala} sala + ${cenario.horasAtividade} ativ.)`);
@@ -518,10 +574,10 @@ function renderizarRanking(ranking) {
   const container = document.getElementById('container-ranking-escolas');
   if (!container) return;
 
-  if (escolas.length <= 1) {
+  if (!ranking.length) {
     container.innerHTML = `
       <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-600 text-center">
-        Adicione pelo menos 2 escolas para comparar qual compensa menos.
+        Preencha os dados de pelo menos 2 escolas para comparar qual compensa menos.
       </div>`;
     return;
   }
@@ -581,10 +637,14 @@ function iniciar() {
   const container = document.getElementById('container-escolas');
   container?.addEventListener('input', aoEditarEscola);
   container?.addEventListener('change', aoEditarEscola);
+  container?.addEventListener('toggle', (e) => {
+    const d = e.target;
+    const esc = d?.dataset?.cardId ? escolas.find((x) => x.id === Number(d.dataset.cardId)) : null;
+    if (esc) esc.aberta = d.open;
+  }, true);
   container?.addEventListener('click', (e) => {
     const rem = e.target.closest('.btn-remover-escola');
     if (rem) { removerEscola(Number(rem.dataset.id)); return; }
-    if (e.target.closest('.btn-adicionar-vazio')) adicionarEscola();
   });
 
   document.getElementById('btn-adicionar-escola')?.addEventListener('click', adicionarEscola);
