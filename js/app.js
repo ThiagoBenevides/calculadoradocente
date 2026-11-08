@@ -15,6 +15,8 @@ const FATOR_ALERTA = 0.6;
 
 const LIMITES = { aulas: 60, diasSemana: 7, kmIdaVolta: 500, minutosDia: 300 };
 
+const MEIOS = { carro: 'Carro', onibus: 'Ônibus' };
+
 const REGIMES = {
   pss: 'PSS / Temporário',
   qpm: 'Efetivo / QPM',
@@ -24,7 +26,9 @@ const REGIMES = {
 // Campos globais do formulário (id -> valor padrão, para restaurar do localStorage)
 const CAMPOS_GLOBAIS = [
   'input-pct-ha', 'input-valor-hora', 'input-gratificacoes',
-  'input-consumo', 'input-gasolina', 'input-rpps-aliq', 'input-rpps-adic'
+  'input-consumo', 'input-gasolina',
+  'input-tarifa', 'input-passagens-dia', 'input-vt-recebido',
+  'input-rpps-aliq', 'input-rpps-adic'
 ];
 
 /* ============================================================
@@ -62,8 +66,8 @@ export function parseNumeroBR(valor) {
    Estado
    ============================================================ */
 const ESCOLAS_PADRAO = () => ([
-  { id: 1, nome: 'Escola Principal (Sede)', aulas: 20, diasSemana: 5, kmIdaVolta: 10, minutosDia: 20, regime: null, valorHora: null, aberta: false },
-  { id: 2, nome: 'Escola B', aulas: 6, diasSemana: 2, kmIdaVolta: 25, minutosDia: 45, regime: null, valorHora: null, aberta: false }
+  { id: 1, nome: 'Escola Principal (Sede)', aulas: 20, diasSemana: 5, kmIdaVolta: 10, minutosDia: 20, regime: null, valorHora: null, meio: null, passagensDia: null, pctHA: null, aberta: false },
+  { id: 2, nome: 'Escola B', aulas: 6, diasSemana: 2, kmIdaVolta: 25, minutosDia: 45, regime: null, valorHora: null, meio: null, passagensDia: null, pctHA: null, aberta: false }
 ]);
 
 let escolas = ESCOLAS_PADRAO();
@@ -76,7 +80,10 @@ function sanitizarEscola(o, idFallback) {
     const n = parseNumeroBR(v);
     return Number.isNaN(n) ? pad : clamp(n, 0, max);
   };
-  const vh = parseNumeroBR(o?.valorHora);
+  const opcional = (v, max) => {
+    const n = parseNumeroBR(v);
+    return Number.isNaN(n) ? null : clamp(n, 0, max);
+  };
   return {
     id: Number.isInteger(o?.id) ? o.id : idFallback,
     nome: String(o?.nome || `Escola ${idFallback}`).slice(0, 60),
@@ -85,7 +92,10 @@ function sanitizarEscola(o, idFallback) {
     kmIdaVolta: num(o?.kmIdaVolta, LIMITES.kmIdaVolta),
     minutosDia: num(o?.minutosDia, LIMITES.minutosDia),
     regime: REGIMES[o?.regime] ? o.regime : null,
-    valorHora: Number.isNaN(vh) ? null : clamp(vh, 0, 1000),
+    valorHora: opcional(o?.valorHora, 1000),
+    meio: MEIOS[o?.meio] ? o.meio : null,
+    passagensDia: opcional(o?.passagensDia, 20),
+    pctHA: opcional(o?.pctHA, 100),
     aberta: false
   };
 }
@@ -95,6 +105,7 @@ function salvarEstado() {
     const globais = {};
     CAMPOS_GLOBAIS.forEach((id) => { globais[id] = document.getElementById(id)?.value ?? ''; });
     globais.regime = document.querySelector('input[name="regime"]:checked')?.value || 'pss';
+    globais.meio = document.querySelector('input[name="meio"]:checked')?.value || 'carro';
     globais.preset = document.querySelector('input[name="preset-ha"]:checked')?.value || '0.3333';
     localStorage.setItem(CHAVE_STORAGE, JSON.stringify({ escolas, nextId, contadorNomes, globais }));
   } catch (_) { /* armazenamento indisponível: segue sem persistir */ }
@@ -117,6 +128,8 @@ function restaurarEstado() {
     });
     const rr = document.querySelector(`input[name="regime"][value="${g.regime}"]`);
     if (rr) rr.checked = true;
+    const rm = document.querySelector(`input[name="meio"][value="${g.meio}"]`);
+    if (rm) rm.checked = true;
     const rp = document.querySelector(`input[name="preset-ha"][value="${g.preset}"]`);
     if (rp) rp.checked = true;
   } catch (_) { /* dados corrompidos: ignora e usa o padrão */ }
@@ -135,11 +148,15 @@ function lerNumero(id, padrao, min = 0, max = Infinity) {
 function getParametrosGlobais() {
   return {
     regime: document.querySelector('input[name="regime"]:checked')?.value || 'pss',
+    meio: document.querySelector('input[name="meio"]:checked')?.value || 'carro',
     pctHoraAtividade: lerNumero('input-pct-ha', 33.33, 0, 100) / 100,
     valorHora: lerNumero('input-valor-hora', 25, 0, 1000),
     gratificacoes: lerNumero('input-gratificacoes', 0, 0, 1e6),
     consumoKm: lerNumero('input-consumo', 10, 1, 100),
     precoGasolina: lerNumero('input-gasolina', 5.9, 0, 50),
+    tarifa: lerNumero('input-tarifa', 0, 0, 100),
+    passagensDia: lerNumero('input-passagens-dia', 2, 0, 20),
+    vtRecebido: lerNumero('input-vt-recebido', 0, 0, 1e5),
     rppsAliq: lerNumero('input-rpps-aliq', 14, 0, 40) / 100,
     rppsAdic: lerNumero('input-rpps-adic', 3.9, 0, 40) / 100
   };
@@ -148,10 +165,21 @@ function getParametrosGlobais() {
 /* ============================================================
    Cálculo (funções puras)
    ============================================================ */
-function custoCombustivelEscola(esc, params) {
+const meioDaEscola = (esc, params) => esc.meio || params.meio || 'carro';
+const pctDaEscola = (esc, params) => (esc.pctHA == null ? params.pctHoraAtividade : esc.pctHA / 100);
+
+function custoCarroEscola(esc, params) {
+  if (meioDaEscola(esc, params) !== 'carro') return 0;
   const kmMes = esc.diasSemana * SEMANAS_TRABALHADAS * esc.kmIdaVolta;
   const litros = params.consumoKm > 0 ? kmMes / params.consumoKm : 0;
   return litros * params.precoGasolina;
+}
+
+// Passagens por dia: valor da escola, ou o padrão geral quando em branco.
+function custoOnibusEscola(esc, params) {
+  if (meioDaEscola(esc, params) !== 'onibus') return 0;
+  const passagens = esc.passagensDia ?? params.passagensDia ?? 2;
+  return esc.diasSemana * SEMANAS_TRABALHADAS * passagens * (params.tarifa || 0);
 }
 
 /**
@@ -163,14 +191,16 @@ function custoCombustivelEscola(esc, params) {
  * - Gratificações fixas são atribuídas à primeira escola da lista.
  */
 export function calcularCenario(lista, params) {
-  const pct = params.pctHoraAtividade;
   const totalAulasSala = lista.reduce((acc, e) => acc + e.aulas, 0);
-  const horasAtividade = Number((totalAulasSala * pct).toFixed(1));
+  const horasAtividade = Number(
+    lista.reduce((acc, e) => acc + e.aulas * pctDaEscola(e, params), 0).toFixed(1)
+  );
   const jornadaTotalSemanal = totalAulasSala + horasAtividade;
 
   const vinculos = lista.map((esc, i) => {
     const regime = esc.regime || params.regime;
     const valorHora = esc.valorHora ?? params.valorHora;
+    const pct = pctDaEscola(esc, params);
     const grat = i === 0 ? params.gratificacoes : 0;
     let bruto;
     if (regime === 'clt') {
@@ -203,13 +233,20 @@ export function calcularCenario(lista, params) {
   const irpf = calcularIRPF(bruto, descontoPrev);
   const liquidoContracheque = bruto - descontoPrev - irpf.irpf;
 
-  const gastoCombustivelTotal = lista.reduce((acc, e) => acc + custoCombustivelEscola(e, params), 0);
+  // Transporte: gasolina (escolas de carro) + passagens (escolas de ônibus) - vale-transporte.
+  // O vale-transporte é tratado como não tributável e só conta se houver escola de ônibus.
+  const custoCombustivel = lista.reduce((acc, e) => acc + custoCarroEscola(e, params), 0);
+  const custoOnibus = lista.reduce((acc, e) => acc + custoOnibusEscola(e, params), 0);
+  const usaOnibus = lista.some((e) => meioDaEscola(e, params) === 'onibus');
+  const vtRecebido = usaOnibus ? (params.vtRecebidoOverride ?? params.vtRecebido ?? 0) : 0;
+  const transporteLiquido = custoCombustivel + custoOnibus - vtRecebido;
 
   return {
     totalAulasSala, horasAtividade, jornadaTotalSemanal,
     bruto, descontoPrev, irpf: irpf.irpf, irpfDetalhe: irpf,
-    gastoCombustivelTotal, liquidoContracheque,
-    saldoLiquidoReal: liquidoContracheque - gastoCombustivelTotal,
+    custoCombustivel, custoOnibus, vtRecebido, usaOnibus, transporteLiquido,
+    liquidoContracheque,
+    saldoLiquidoReal: liquidoContracheque - transporteLiquido,
     vinculos
   };
 }
@@ -226,13 +263,21 @@ export function analisarRanking(lista, params, atual) {
 
   return ativas.map((esc) => {
     const restante = lista.filter((e) => e.id !== esc.id);
-    const sem = calcularCenario(restante, params);
+
+    // O vale-transporte recebido é um total; ao sair de uma escola de ônibus,
+    // perde-se a parte proporcional ao custo de ônibus dela.
+    const custoOnibusRestante = restante.reduce((acc, e) => acc + custoOnibusEscola(e, params), 0);
+    const vtSem = atual.custoOnibus > 0
+      ? (params.vtRecebido || 0) * (custoOnibusRestante / atual.custoOnibus)
+      : (params.vtRecebido || 0);
+    const sem = calcularCenario(restante, { ...params, vtRecebidoOverride: vtSem });
 
     const ganhoContracheque = atual.liquidoContracheque - sem.liquidoContracheque;
-    const economiaGasolina = custoCombustivelEscola(esc, params);
-    const ganhoReal = ganhoContracheque - economiaGasolina;
+    const ganhoReal = atual.saldoLiquidoReal - sem.saldoLiquidoReal;
+    const economiaTransporte = atual.transporteLiquido - sem.transporteLiquido;
 
-    const horasSala = esc.aulas * (1 + params.pctHoraAtividade) * SEMANAS_TRABALHADAS;
+    const pct = pctDaEscola(esc, params);
+    const horasSala = esc.aulas * (1 + pct) * SEMANAS_TRABALHADAS;
     const horasDeslocamento = esc.diasSemana * SEMANAS_TRABALHADAS * (esc.minutosDia / 60);
     const horasMes = horasSala + horasDeslocamento;
 
@@ -241,7 +286,7 @@ export function analisarRanking(lista, params, atual) {
 
     return {
       id: esc.id, nome: esc.nome, horasMes,
-      ganhoContracheque, economiaGasolina, ganhoReal, retorno,
+      ganhoContracheque, economiaTransporte, ganhoReal, retorno,
       alerta: retorno < valorRef * FATOR_ALERTA
     };
   }).sort((a, b) => a.retorno - b.retorno);
@@ -265,25 +310,37 @@ function htmlCampo(esc, chave, rotulo, valor, placeholder = '0') {
 // Mostra vazio quando o valor é 0, para o campo não parecer "preenchido".
 const valorOuVazio = (n) => (n ? fmtCampo(n) : '');
 
-export function textoResumoEscola(esc) {
+const fmt1 = (n) => String(Math.round(Number(n) * 10) / 10).replace('.', ',');
+
+export function textoResumoEscola(esc, pctGeral = 0) {
   if (!esc.aulas) return 'Preencha os dados desta escola';
-  const partes = [`${fmtCampo(esc.aulas)} aulas/sem`, `${fmtCampo(esc.diasSemana)} dias/sem`];
-  if (esc.kmIdaVolta) partes.push(`${fmtCampo(esc.kmIdaVolta)} km/dia`);
-  return partes.join(' · ');
+  const pct = esc.pctHA == null ? pctGeral : esc.pctHA / 100;
+  const horas = esc.aulas * (1 + pct);
+  return `${fmtCampo(esc.aulas)} aulas · ${fmt1(horas)}h pagas · ${fmtCampo(esc.diasSemana)} dias/sem`;
 }
 
-export function htmlCardEscola(esc, index) {
+export function textoHorasEscola(esc, pctGeral = 0) {
+  if (!esc.aulas) return 'Informe as aulas por semana para ver as horas pagas.';
+  const pct = esc.pctHA == null ? pctGeral : esc.pctHA / 100;
+  return `Horas pagas por semana: ${fmt1(esc.aulas * (1 + pct))}h (${fmtCampo(esc.aulas)} aulas + ${fmt1(esc.aulas * pct)}h de atividade)`;
+}
+
+export function htmlCardEscola(esc, index, pctGeral = 0) {
   const id = esc.id;
-  const opcoes = [['', 'Igual ao geral'], ...Object.entries(REGIMES)]
+  const opcoesRegime = [['', 'Igual ao geral'], ...Object.entries(REGIMES)]
     .map(([v, t]) => `<option value="${v}" ${(esc.regime || '') === v ? 'selected' : ''}>${t}</option>`)
     .join('');
+  const opcoesMeio = [['', 'Igual ao geral'], ...Object.entries(MEIOS)]
+    .map(([v, t]) => `<option value="${v}" ${(esc.meio || '') === v ? 'selected' : ''}>${t}</option>`)
+    .join('');
+  const opc = (n) => (n == null ? '' : fmtCampo(n));
 
   return `
     <summary class="flex items-center gap-3 p-4 rounded-xl hover:bg-slate-50">
       <span class="w-7 h-7 shrink-0 rounded-full bg-slate-100 text-slate-700 text-xs font-black flex items-center justify-center">${index + 1}</span>
       <span class="flex-1 min-w-0">
         <span class="block font-bold text-slate-900 truncate" data-nome-resumo="${id}">${escaparHTML(esc.nome)}</span>
-        <span class="block text-sm text-slate-600" data-resumo="${id}">${escaparHTML(textoResumoEscola(esc))}</span>
+        <span class="block text-sm text-slate-600" data-resumo="${id}">${escaparHTML(textoResumoEscola(esc, pctGeral))}</span>
       </span>
       <span class="text-right shrink-0">
         <span class="block text-xs text-slate-600">Bruto/mês</span>
@@ -305,13 +362,20 @@ export function htmlCardEscola(esc, index) {
           ${htmlCampo(esc, 'aulas', 'Aulas por semana', valorOuVazio(esc.aulas))}
           ${htmlCampo(esc, 'diasSemana', 'Dias por semana na escola', valorOuVazio(esc.diasSemana))}
         </div>
+        <p class="text-sm font-semibold text-indigo-800 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2 mt-3" data-horas="${id}">${escaparHTML(textoHorasEscola(esc, pctGeral))}</p>
       </fieldset>
 
       <fieldset>
-        <legend class="text-sm font-bold text-slate-900 mb-2">Deslocamento até esta escola</legend>
+        <legend class="text-sm font-bold text-slate-900">Deslocamento até esta escola</legend>
+        <p class="text-sm text-slate-600 mb-2">Informe os km se for de carro, ou as passagens se for de ônibus. Se no mesmo dia você sai de outra escola e vem para esta, conte só as passagens a mais que esta escola gera.</p>
         <div class="grid grid-cols-2 gap-3">
-          ${htmlCampo(esc, 'kmIdaVolta', 'Km por dia (ida e volta)', valorOuVazio(esc.kmIdaVolta))}
+          <div>
+            <label for="esc-${id}-meio" class="block text-sm font-semibold text-slate-700 mb-1">Meio de transporte</label>
+            <select id="esc-${id}-meio" data-id="${id}" data-campo="meio" class="${CLASSE_INPUT}">${opcoesMeio}</select>
+          </div>
           ${htmlCampo(esc, 'minutosDia', 'Tempo por dia (min, ida e volta)', valorOuVazio(esc.minutosDia))}
+          ${htmlCampo(esc, 'kmIdaVolta', 'Km por dia, se for de carro', valorOuVazio(esc.kmIdaVolta))}
+          ${htmlCampo(esc, 'passagensDia', 'Passagens por dia, se for de ônibus', opc(esc.passagensDia), 'igual ao geral')}
         </div>
       </fieldset>
 
@@ -321,9 +385,10 @@ export function htmlCardEscola(esc, index) {
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label for="esc-${id}-regime" class="block text-sm font-semibold text-slate-700 mb-1">Regime</label>
-            <select id="esc-${id}-regime" data-id="${id}" data-campo="regime" class="${CLASSE_INPUT}">${opcoes}</select>
+            <select id="esc-${id}-regime" data-id="${id}" data-campo="regime" class="${CLASSE_INPUT}">${opcoesRegime}</select>
           </div>
-          ${htmlCampo(esc, 'valorHora', 'Valor da hora-aula (R$)', esc.valorHora == null ? '' : fmtCampo(esc.valorHora), 'igual ao geral')}
+          ${htmlCampo(esc, 'valorHora', 'Valor da hora-aula (R$)', opc(esc.valorHora), 'igual ao geral')}
+          ${htmlCampo(esc, 'pctHA', 'Hora-atividade (%)', opc(esc.pctHA), 'igual ao geral')}
         </div>
       </fieldset>
 
@@ -351,7 +416,7 @@ function renderizarFormularioEscolas() {
     card.className = 'border border-slate-200 rounded-xl bg-white';
     card.dataset.cardId = esc.id;
     if (esc.aberta) card.open = true;
-    card.innerHTML = htmlCardEscola(esc, index);
+    card.innerHTML = htmlCardEscola(esc, index, getParametrosGlobais().pctHoraAtividade);
     container.appendChild(card);
   });
 
@@ -371,13 +436,17 @@ function aoEditarEscola(e) {
   const esc = escolas.find((x) => x.id === Number(el.dataset.id));
   if (!esc) return;
 
+  const MAX_OPCIONAL = { valorHora: 1000, passagensDia: 20, pctHA: 100 };
+
   if (campo === 'nome') {
     esc.nome = el.value.trim().slice(0, 60) || `Escola ${esc.id}`;
   } else if (campo === 'regime') {
     esc.regime = REGIMES[el.value] ? el.value : null;
-  } else if (campo === 'valorHora') {
+  } else if (campo === 'meio') {
+    esc.meio = MEIOS[el.value] ? el.value : null;
+  } else if (campo in MAX_OPCIONAL) {
     const n = parseNumeroBR(el.value);
-    esc.valorHora = Number.isNaN(n) ? null : clamp(n, 0, 1000);
+    esc[campo] = Number.isNaN(n) ? null : clamp(n, 0, MAX_OPCIONAL[campo]);
   } else {
     const n = parseNumeroBR(el.value);
     esc[campo] = clamp(Number.isNaN(n) ? 0 : n, 0, LIMITES[campo] ?? 1e6);
@@ -394,7 +463,7 @@ function adicionarEscola() {
   escolas.forEach((e) => { e.aberta = false; });
   escolas.push({
     id, nome, aulas: 0, diasSemana: 0, kmIdaVolta: 0, minutosDia: 0,
-    regime: null, valorHora: null, aberta: true
+    regime: null, valorHora: null, meio: null, passagensDia: null, pctHA: null, aberta: true
   });
   renderizarFormularioEscolas();
   processarSimulacao();
@@ -458,7 +527,8 @@ function mostrarToast(texto, rotuloAcao, aoClicar) {
    ============================================================ */
 function prepararCamposGlobais() {
   // Troca type=number por texto decimal: aceita vírgula e não muda valor com o scroll.
-  ['input-pct-ha', 'input-valor-hora', 'input-gratificacoes', 'input-consumo', 'input-gasolina'].forEach((id) => {
+  ['input-pct-ha', 'input-valor-hora', 'input-gratificacoes', 'input-consumo', 'input-gasolina',
+   'input-tarifa', 'input-passagens-dia', 'input-vt-recebido'].forEach((id) => {
     const el = document.getElementById(id);
     if (!el) return;
     const n = parseNumeroBR(el.value);
@@ -468,21 +538,20 @@ function prepararCamposGlobais() {
     if (!Number.isNaN(n)) el.value = fmtCampo(n);
   });
 
-  // Bloco de alíquotas do RPPS (aparece só quando algum vínculo é QPM)
-  const gasolina = document.getElementById('input-gasolina');
-  const grade = gasolina?.closest('.grid');
+  // Bloco de alíquotas do RPPS (aparece só quando algum vínculo é QPM), depois das gratificações
+  const grade = document.getElementById('input-gratificacoes')?.closest('.grid');
   if (grade && !document.getElementById('bloco-rpps')) {
     const bloco = document.createElement('div');
     bloco.id = 'bloco-rpps';
-    bloco.className = 'grid grid-cols-2 gap-4 pt-2 border-t border-slate-100';
+    bloco.className = 'grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2';
     bloco.style.display = 'none';
     bloco.innerHTML = `
       <div>
-        <label for="input-rpps-aliq" class="block text-xs font-semibold text-slate-700 mb-1">Alíquota RPPS do seu ente (%)</label>
+        <label for="input-rpps-aliq" class="block text-sm font-semibold text-slate-800 mb-1">Alíquota do RPPS do seu ente (%)</label>
         <input type="text" inputmode="decimal" id="input-rpps-aliq" value="14" class="${CLASSE_INPUT}">
       </div>
       <div>
-        <label for="input-rpps-adic" class="block text-xs font-semibold text-slate-700 mb-1">Contribuição adicional (%)</label>
+        <label for="input-rpps-adic" class="block text-sm font-semibold text-slate-800 mb-1">Contribuição adicional (%)</label>
         <input type="text" inputmode="decimal" id="input-rpps-adic" value="3,9" class="${CLASSE_INPUT}">
       </div>`;
     grade.insertAdjacentElement('afterend', bloco);
@@ -502,6 +571,13 @@ function atualizarVisibilidadeCampos(params) {
   const usaQPM = escolas.some((e) => (e.regime || params.regime) === 'qpm');
   const bloco = document.getElementById('bloco-rpps');
   if (bloco) bloco.style.display = usaQPM ? '' : 'none';
+
+  // Campos de carro e de ônibus conforme o meio usado nas escolas
+  const meios = new Set(escolas.length ? escolas.map((e) => meioDaEscola(e, params)) : [params.meio]);
+  const carro = document.getElementById('bloco-carro');
+  const onibus = document.getElementById('bloco-onibus');
+  if (carro) carro.style.display = meios.has('carro') ? '' : 'none';
+  if (onibus) onibus.style.display = meios.has('onibus') ? '' : 'none';
 }
 
 function garantirNotaResultado() {
@@ -528,8 +604,9 @@ function processarSimulacao() {
   const params = getParametrosGlobais();
   atualizarVisibilidadeCampos(params);
 
-  const placeholder = fmtCampo(params.valorHora);
-  document.querySelectorAll('input[data-campo="valorHora"]').forEach((el) => { el.placeholder = placeholder; });
+  document.querySelectorAll('input[data-campo="valorHora"]').forEach((el) => { el.placeholder = `geral: ${fmtCampo(params.valorHora)}`; });
+  document.querySelectorAll('input[data-campo="passagensDia"]').forEach((el) => { el.placeholder = `geral: ${fmtCampo(params.passagensDia)}`; });
+  document.querySelectorAll('input[data-campo="pctHA"]').forEach((el) => { el.placeholder = `geral: ${fmtCampo(params.pctHoraAtividade * 100)}`; });
 
   const cenario = calcularCenario(escolas, params);
   const ranking = analisarRanking(escolas, params, cenario);
@@ -541,7 +618,9 @@ function processarSimulacao() {
 
   escolas.forEach((esc) => {
     const r = document.querySelector(`[data-resumo="${esc.id}"]`);
-    if (r) r.textContent = textoResumoEscola(esc);
+    if (r) r.textContent = textoResumoEscola(esc, params.pctHoraAtividade);
+    const h = document.querySelector(`[data-horas="${esc.id}"]`);
+    if (h) h.textContent = textoHorasEscola(esc, params.pctHoraAtividade);
     const n = document.querySelector(`[data-nome-resumo="${esc.id}"]`);
     if (n) n.textContent = esc.nome;
   });
@@ -553,17 +632,27 @@ function processarSimulacao() {
   set('res-salario-liquido', fmtMoeda(cenario.saldoLiquidoReal));
   set('res-salario-bruto', fmtMoeda(cenario.bruto));
   set('res-total-descontos', `- ${fmtMoeda(cenario.descontoPrev + cenario.irpf)}`);
-  set('res-total-combustivel', `- ${fmtMoeda(cenario.gastoCombustivelTotal)}`);
+  set('res-total-combustivel', `${cenario.transporteLiquido >= 0 ? '-' : '+'} ${fmtMoeda(Math.abs(cenario.transporteLiquido))}`);
 
   const nota = garantirNotaResultado();
   if (nota) {
     const alerta = cenario.jornadaTotalSemanal > 40
       ? `<p class="font-semibold text-amber-700">Atenção: ${cenario.jornadaTotalSemanal.toFixed(1)}h semanais. Confira se essa carga é compatível com seus contratos e com as regras de acúmulo da sua rede.</p>`
       : '';
+    const partes = [];
+    if (cenario.custoCombustivel > 0) partes.push(`gasolina ${fmtMoeda(cenario.custoCombustivel)}`);
+    if (cenario.usaOnibus) {
+      partes.push(`ônibus ${fmtMoeda(cenario.custoOnibus)}`);
+      partes.push(`vale-transporte recebido ${fmtMoeda(cenario.vtRecebido)}`);
+    }
+    const linhaTransporte = partes.length
+      ? `<p>Transporte: ${partes.join(' · ')}</p>`
+      : '';
     nota.innerHTML = `
       ${alerta}
-      <p>No contracheque (antes do combustível): <strong class="text-slate-800">${fmtMoeda(cenario.liquidoContracheque)}</strong></p>
-      <p class="text-slate-500">Estimativa mensal, sem 13º, férias e FGTS. O IRPF é calculado sobre a soma dos vínculos (acerto na declaração anual); a retenção mensal de cada fonte pode ser menor. Tabelas de ${TABELAS.ano}, atualizadas em ${formatarDataISO(TABELAS.atualizadoEm)}. Não substitui o contracheque.</p>`;
+      <p>No contracheque (antes do transporte): <strong class="text-slate-800">${fmtMoeda(cenario.liquidoContracheque)}</strong></p>
+      ${linhaTransporte}
+      <p class="text-slate-500">Estimativa mensal, sem 13º, férias e FGTS. O vale-transporte é tratado como não tributável. O IRPF é calculado sobre a soma dos vínculos (acerto na declaração anual); a retenção mensal de cada fonte pode ser menor. Tabelas de ${TABELAS.ano}, atualizadas em ${formatarDataISO(TABELAS.atualizadoEm)}. Não substitui o contracheque.</p>`;
   }
 
   renderizarRanking(ranking);
@@ -599,6 +688,9 @@ function renderizarRanking(ranking) {
 
   ranking.forEach((item, index) => {
     const destaque = index === 0 && item.alerta;
+    const transporte = item.economiaTransporte >= 0
+      ? `economiza ${fmtMoeda(item.economiaTransporte)} de transporte`
+      : `perde mais ${fmtMoeda(-item.economiaTransporte)} de vale-transporte`;
     const card = document.createElement('div');
     card.className = `p-3.5 rounded-xl border ${destaque ? 'bg-amber-50/70 border-amber-300' : 'bg-slate-50 border-slate-200'}`;
     card.innerHTML = `
@@ -612,7 +704,7 @@ function renderizarRanking(ranking) {
         <span class="font-bold whitespace-nowrap ${item.alerta ? 'text-rose-600' : 'text-slate-700'}">${fmtMoeda(item.retorno)} / h real</span>
       </div>
       <p class="text-xs text-slate-600">
-        Se sair: perde ${fmtMoeda(item.ganhoContracheque)}/mês no contracheque e economiza ${fmtMoeda(item.economiaGasolina)} de gasolina.
+        Se sair: perde ${fmtMoeda(item.ganhoContracheque)}/mês no contracheque e ${transporte}.
         Ela consome ${item.horasMes.toFixed(0)} h/mês, contando o deslocamento.
       </p>`;
     container.appendChild(card);
@@ -669,7 +761,7 @@ function iniciar() {
     processarSimulacao();
   });
 
-  document.querySelectorAll('input[name="regime"]').forEach((r) => r.addEventListener('change', processarSimulacao));
+  document.querySelectorAll('input[name="regime"], input[name="meio"]').forEach((r) => r.addEventListener('change', processarSimulacao));
   [...CAMPOS_GLOBAIS.filter((id) => id !== 'input-pct-ha')].forEach((id) => {
     document.getElementById(id)?.addEventListener('input', processarSimulacao);
   });

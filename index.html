@@ -249,24 +249,33 @@
 
           <div class="border-t border-slate-200 pt-6 space-y-5">
             <div>
-              <h3 class="text-base font-bold text-slate-900">Combustível e extras</h3>
-              <p class="text-sm text-slate-600">Os valores são exemplos. Ajuste para o seu carro e para a sua realidade.</p>
+              <h3 class="text-base font-bold text-slate-900">Transporte</h3>
+              <p class="text-sm text-slate-600">Como você chega às escolas? Cada escola pode ter um meio diferente: é só ajustar dentro dela.</p>
             </div>
-            <p class="text-sm text-slate-600">Os valores abaixo são exemplos. Ajuste para o seu carro e para a sua realidade.</p>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label for="input-gratificacoes" class="block text-sm font-semibold text-slate-800 mb-1">Gratificações mensais fixas (R$)</label>
-                <div class="relative">
-                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-500" aria-hidden="true">R$</span>
-                  <input type="text" inputmode="decimal" id="input-gratificacoes" value="0"
-                         class="w-full h-12 rounded-xl border border-slate-300 pl-10 pr-3 text-base font-semibold focus:ring-2 focus:ring-indigo-500">
-                </div>
+            <fieldset>
+              <legend class="text-sm font-semibold text-slate-800 mb-2">Meio de transporte padrão</legend>
+              <div class="grid grid-cols-2 gap-3 max-w-md">
+                <label class="relative block cursor-pointer">
+                  <input type="radio" name="meio" value="carro" checked class="peer sr-only">
+                  <span class="block h-full p-3 border-2 border-slate-200 rounded-xl text-center transition hover:bg-slate-50 peer-checked:border-indigo-600 peer-checked:bg-indigo-50 peer-focus-visible:ring-4 peer-focus-visible:ring-indigo-300">
+                    <span class="block text-sm font-bold text-slate-900">Carro</span>
+                    <span class="block text-xs text-slate-600 mt-0.5">Gasolina</span>
+                  </span>
+                </label>
+                <label class="relative block cursor-pointer">
+                  <input type="radio" name="meio" value="onibus" class="peer sr-only">
+                  <span class="block h-full p-3 border-2 border-slate-200 rounded-xl text-center transition hover:bg-slate-50 peer-checked:border-indigo-600 peer-checked:bg-indigo-50 peer-focus-visible:ring-4 peer-focus-visible:ring-indigo-300">
+                    <span class="block text-sm font-bold text-slate-900">Ônibus</span>
+                    <span class="block text-xs text-slate-600 mt-0.5">Passagem e vale-transporte</span>
+                  </span>
+                </label>
               </div>
-            </div>
+            </fieldset>
 
-            <!-- O app.js insere o bloco de alíquotas do RPPS logo depois desta grade -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div id="bloco-carro" class="space-y-3">
+              <p class="text-sm font-bold text-slate-900">Carro</p>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label for="input-consumo" class="block text-sm font-semibold text-slate-800 mb-1">Consumo do veículo (km por litro)</label>
                 <input type="text" inputmode="decimal" id="input-consumo" value="10"
@@ -277,6 +286,55 @@
                 <div class="relative">
                   <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-500" aria-hidden="true">R$</span>
                   <input type="text" inputmode="decimal" id="input-gasolina" value="5,90"
+                         class="w-full h-12 rounded-xl border border-slate-300 pl-10 pr-3 text-base font-semibold focus:ring-2 focus:ring-indigo-500">
+                </div>
+              </div>
+              </div>
+            </div>
+
+            <div id="bloco-onibus" class="space-y-3">
+              <p class="text-sm font-bold text-slate-900">Ônibus e vale-transporte</p>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label for="input-tarifa" class="block text-sm font-semibold text-slate-800 mb-1">Valor de cada passagem (R$)</label>
+                <div class="relative">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-500" aria-hidden="true">R$</span>
+                  <input type="text" inputmode="decimal" id="input-tarifa" value="" placeholder="0,00"
+                         class="w-full h-12 rounded-xl border border-slate-300 pl-10 pr-3 text-base font-semibold focus:ring-2 focus:ring-indigo-500">
+                </div>
+              </div>
+              <div>
+                <label for="input-passagens-dia" class="block text-sm font-semibold text-slate-800 mb-1">Passagens por dia (média, padrão de cada escola)</label>
+                <input type="text" inputmode="decimal" id="input-passagens-dia" value="" placeholder="2" aria-describedby="ajuda-passagens"
+                       class="w-full h-12 rounded-xl border border-slate-300 px-3 text-base font-semibold focus:ring-2 focus:ring-indigo-500">
+                <p id="ajuda-passagens" class="text-sm text-slate-600 mt-1">Ida e volta são 2. Se num mesmo dia você sai de uma escola e vai para outra, ajuste dentro da escola.</p>
+              </div>
+              </div>
+              <div class="max-w-sm">
+              <div>
+                <label for="input-vt-recebido" class="block text-sm font-semibold text-slate-800 mb-1">Vale-transporte que você recebe por mês (R$)</label>
+                <div class="relative">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-500" aria-hidden="true">R$</span>
+                  <input type="text" inputmode="decimal" id="input-vt-recebido" value="" placeholder="0,00" aria-describedby="ajuda-vt"
+                         class="w-full h-12 rounded-xl border border-slate-300 pl-10 pr-3 text-base font-semibold focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <p id="ajuda-vt" class="text-sm text-slate-600 mt-1">Total recebido no mês, somando todas as escolas. Não paga previdência nem imposto de renda.</p>
+              </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="border-t border-slate-200 pt-6 space-y-5">
+            <div>
+              <h3 class="text-base font-bold text-slate-900">Gratificações e extras</h3>
+              <p class="text-sm text-slate-600">Valores fixos que você recebe todo mês além das aulas. Entram no bruto, na previdência e no imposto de renda.</p>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label for="input-gratificacoes" class="block text-sm font-semibold text-slate-800 mb-1">Gratificações mensais fixas (R$)</label>
+                <div class="relative">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-500" aria-hidden="true">R$</span>
+                  <input type="text" inputmode="decimal" id="input-gratificacoes" value="0"
                          class="w-full h-12 rounded-xl border border-slate-300 pl-10 pr-3 text-base font-semibold focus:ring-2 focus:ring-indigo-500">
                 </div>
               </div>
@@ -320,7 +378,7 @@
           <div>
             <span class="block text-sm font-semibold text-slate-600">Salário líquido real no bolso</span>
             <div id="res-salario-liquido" class="text-4xl font-black text-slate-900 tracking-tight mt-1">R$ 0,00</div>
-            <p class="text-sm text-slate-600 mt-1">Depois de previdência, imposto de renda e combustível.</p>
+            <p class="text-sm text-slate-600 mt-1">Depois de previdência, imposto de renda e transporte.</p>
           </div>
 
           <!-- Estrutura usada pelo app.js: o aviso legal é inserido depois deste bloco -->
@@ -334,7 +392,7 @@
               <span id="res-total-descontos" class="font-semibold">- R$ 0,00</span>
             </div>
             <div class="flex justify-between items-center gap-2 text-amber-800">
-              <span>Combustível por mês</span>
+              <span>Transporte por mês</span>
               <span id="res-total-combustivel" class="font-semibold">- R$ 0,00</span>
             </div>
           </div>
